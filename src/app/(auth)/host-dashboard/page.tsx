@@ -1,0 +1,204 @@
+'use client';
+
+import { useAuth } from '@/context/AuthContext';
+import { UserRole } from '@/constants/userRoles';
+import { useRouteProtection } from '@/app/utils/auth-helpers';
+import { useState } from 'react';
+
+// Mock data for properties
+const MOCK_PROPERTIES = [
+  {
+    id: 'prop-1001',
+    name: 'Luxury Ocean View Villa',
+    location: 'Miami Beach, FL',
+    rooms: 5,
+    occupancy: 80,
+    revenue: 12500,
+    status: 'Active',
+  },
+  {
+    id: 'prop-1002',
+    name: 'Downtown Loft',
+    location: 'New York, NY',
+    rooms: 2,
+    occupancy: 65,
+    revenue: 4800,
+    status: 'Active',
+  },
+  {
+    id: 'prop-1003',
+    name: 'Mountain Retreat Cabin',
+    location: 'Aspen, CO',
+    rooms: 3,
+    occupancy: 45,
+    revenue: 3200,
+    status: 'Maintenance',
+  },
+];
+
+export default function HostDashboard() {
+  // Protect this route - only hosts can access
+  const isLoading = useRouteProtection(UserRole.HOST);
+  const { user } = useAuth();
+  const [properties, setProperties] = useState(MOCK_PROPERTIES);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Host Dashboard</h1>
+        <p className="mt-1 text-sm text-gray-600">
+          Manage your properties, bookings, and earnings
+        </p>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <dt className="text-sm font-medium text-gray-500 truncate">Total Properties</dt>
+            <dd className="mt-1 text-3xl font-semibold text-gray-900">{properties.length}</dd>
+          </div>
+        </div>
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <dt className="text-sm font-medium text-gray-500 truncate">Average Occupancy</dt>
+            <dd className="mt-1 text-3xl font-semibold text-gray-900">
+              {Math.round(properties.reduce((sum, p) => sum + p.occupancy, 0) / properties.length)}%
+            </dd>
+          </div>
+        </div>
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <dt className="text-sm font-medium text-gray-500 truncate">Active Bookings</dt>
+            <dd className="mt-1 text-3xl font-semibold text-gray-900">12</dd>
+          </div>
+        </div>
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <dt className="text-sm font-medium text-gray-500 truncate">Monthly Revenue</dt>
+            <dd className="mt-1 text-3xl font-semibold text-gray-900">
+              ${properties.reduce((sum, p) => sum + p.revenue, 0)}
+            </dd>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white shadow rounded-lg mb-8">
+        <div className="px-4 py-5 sm:p-6">
+          <h2 className="text-lg leading-6 font-medium text-gray-900 mb-4">Host Actions</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <button className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700">
+              Add Property
+            </button>
+            <button className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">
+              Update Pricing
+            </button>
+            <button className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">
+              Manage Availability
+            </button>
+            <button className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50">
+              View Reports
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Properties Section */}
+      <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="px-4 py-5 border-b border-gray-200 sm:px-6">
+          <div className="-ml-4 -mt-2 flex items-center justify-between flex-wrap sm:flex-nowrap">
+            <div className="ml-4 mt-2">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">Your Properties</h3>
+            </div>
+            <div className="ml-4 mt-2 flex-shrink-0">
+              <button
+                type="button"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700"
+              >
+                Add New Property
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Properties Table */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Property
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Location
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Rooms
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Occupancy
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Monthly Revenue
+                </th>
+                <th scope="col" className="relative px-6 py-3">
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {properties.map((property) => (
+                <tr key={property.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {property.name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {property.location}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {property.rooms}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {property.occupancy}%
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      property.status === 'Active' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {property.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    ${property.revenue}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button className="text-green-600 hover:text-green-900 mr-4">
+                      Edit
+                    </button>
+                    <button className="text-red-600 hover:text-red-900">
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
