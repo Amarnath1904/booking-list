@@ -7,13 +7,11 @@ export interface IUser extends Document {
   displayName?: string;
   role: UserRole;
   propertyName?: string;
-  location?: string;
-  phoneNumber?: string;
+  location?: string;  phoneNumber?: string;
   alternateNumber?: string;
   upiId?: string;
   bankAccountName?: string;
   numberOfRooms?: string;
-  pricingAmount?: string;
   pricingType?: 'perRoom' | 'perPerson';
   createdAt: Date;
   updatedAt: Date;
@@ -33,11 +31,9 @@ const UserSchema: Schema = new Schema(
     propertyName: { type: String },
     location: { type: String },
     phoneNumber: { type: String },
-    alternateNumber: { type: String },
-    upiId: { type: String },
+    alternateNumber: { type: String },    upiId: { type: String },
     bankAccountName: { type: String },
     numberOfRooms: { type: String },
-    pricingAmount: { type: String },
     pricingType: { 
       type: String,
       enum: ['perRoom', 'perPerson'],

@@ -13,9 +13,32 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
+// Log Firebase config for debugging (remove in production)
+if (process.env.NODE_ENV === 'development') {
+  console.log('Firebase Config:', {
+    apiKeyExists: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomainExists: !!process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectIdExists: !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    // Don't log actual values for security reasons
+  });
+}
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+
+// Set persistence to LOCAL for better user experience
+// This ensures the user remains logged in even after browser refresh
+if (typeof window !== 'undefined') {
+  import('firebase/auth').then((firebaseAuth) => {
+    if (firebaseAuth.setPersistence && firebaseAuth.browserLocalPersistence) {
+      firebaseAuth.setPersistence(auth, firebaseAuth.browserLocalPersistence)
+        .catch((error: any) => {
+          console.error('Auth persistence error:', error);
+        });
+    }
+  });
+}
 
 // Analytics might not be available in all environments 
 let analytics: Analytics | undefined = undefined;

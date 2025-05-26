@@ -45,20 +45,30 @@ export default function LoginPage() {
           if (response.ok) {
             const userData = await response.json();
             // Set session cookie
-            document.cookie = `session=${user.uid}; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 days
-            // Redirect based on role
-            if (userData.role === UserRole.AGENT) {
-              router.push('/agent-dashboard');
-            } else {
-              router.push('/host-dashboard');
-            }
+            setCookie('session', user.uid, 7); // 7 days
+            setCookie('firebaseUid', user.uid, 7); // 7 days
+            setCookie('role', userData.role, 7); // 7 days
+            
+            // Add a small delay to allow cookies to be set before redirection
+            setTimeout(() => {
+              // Only redirect if we're not already in a redirect loop
+              const urlParams = new URLSearchParams(window.location.search);
+              if (!urlParams.has('redirected')) {
+                // Redirect based on role
+                if (userData.role === UserRole.AGENT) {
+                  router.push('/agent-dashboard');
+                } else {
+                  router.push('/host-dashboard');
+                }
+              }
+            }, 500);
           } else if (response.status === 404) {
             // User doesn't exist in our database yet, keep them on the login page
             // They'll need to complete registration
           } else {
             console.error('Error checking user:', await response.text());
           }
-        } catch (error) {
+        } catch (error: unknown) {
           console.error('Error checking user:', error);
         }
       }
@@ -176,50 +186,110 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-  };
-  const handleGoogleSignIn = async () => {
+  };  const handleGoogleSignIn = async () => {
     setLoading(true);
     setError('');
 
     try {
+      // Configure Google provider with additional scopes if needed
       const provider = new GoogleAuthProvider();
+      
+      // Add scopes for additional permissions if needed
+      provider.addScope('profile');
+      provider.addScope('email');
+      
+      // Set custom parameters
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
+      
+      console.log('Starting Google sign-in process...');
       const result = await signInWithPopup(auth, provider);
+      console.log('Google sign-in successful', result);
       const user = result.user;
       
       // Check if user exists in our database
+      console.log('Checking if user exists in database...');
       const userResponse = await fetch(`/api/users/${user.uid}`);
+      console.log('User check response status:', userResponse.status);
+      
+      // Set Firebase cookies regardless of database status
+      setCookie('session', user.uid, 7); // 7 days
+      setCookie('firebaseUid', user.uid, 7); // 7 days
       
       if (userResponse.status === 404) {
         if (isSignUp) {
+          console.log('Creating new user in database with role:', userRole);
           // If this is a sign up, create the user with the selected role
           await createUserInDatabase(user, userRole);
           
-          // Redirect based on role
-          if (userRole === UserRole.AGENT) {
-            router.push('/agent-dashboard');
-          } else {
-            router.push('/host-dashboard');
-          }
+          // Set role cookie
+          setCookie('role', userRole, 7); // 7 days
+          
+          // Add a small delay to allow cookies to be set
+          setTimeout(() => {
+            // Only redirect if we're not already in a redirect loop
+            const urlParams = new URLSearchParams(window.location.search);
+            if (!urlParams.has('redirected')) {
+              // Redirect based on role
+              if (userRole === UserRole.AGENT) {
+                router.push('/agent-dashboard');
+              } else {
+                router.push('/host-dashboard');
+              }
+            }
+          }, 500);
         } else {
-          // If this is a sign in but user doesn&apos;t exist in our DB yet,
+          console.log('User not found in database, redirecting to dashboard');
+          // If this is a sign in but user doesn't exist in our DB yet,
           // send them to the dashboard to select a role
-          router.push('/dashboard');
+          setTimeout(() => router.push('/dashboard'), 500);
         }
       } else if (userResponse.ok) {
         // User exists, redirect based on their saved role
         const userData = await userResponse.json();
-        if (userData.role === UserRole.AGENT) {
-          router.push('/agent-dashboard');
-        } else {
-          router.push('/host-dashboard');
-        }
+        console.log('User found in database with role:', userData.role);
+        
+        // Set role cookie
+        setCookie('role', userData.role, 7); // 7 days
+        
+        // Add a small delay to allow cookies to be set
+        setTimeout(() => {
+          // Only redirect if we're not already in a redirect loop
+          const urlParams = new URLSearchParams(window.location.search);
+          if (!urlParams.has('redirected')) {
+            if (userData.role === UserRole.AGENT) {
+              router.push('/agent-dashboard');
+            } else {
+              router.push('/host-dashboard');
+            }
+          }
+        }, 500);
       } else {
-        // Default redirect if we can&apos;t determine role
-        router.push('/dashboard');
+        console.log('Error checking user in database, status:', userResponse.status);
+        // Default redirect if we can't determine role
+        setTimeout(() => router.push('/dashboard'), 500);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Google sign-in error:', error);
-      setError('Failed to sign in with Google. Please try again.');
+      
+      // Cast error to AuthError type if possible
+      const authError = error as AuthError;
+      
+      // More detailed error handling
+      if (authError.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in was cancelled. Please try again.');
+      } else if (authError.code === 'auth/popup-blocked') {
+        setError('Pop-up was blocked by your browser. Please allow pop-ups for this site and try again.');
+      } else if (authError.code === 'auth/cancelled-popup-request') {
+        setError('Sign-in process was cancelled. Please try again.');
+      } else if (authError.code === 'auth/network-request-failed') {
+        setError('Network error. Please check your internet connection and try again.');
+      } else if (authError.code === 'auth/unauthorized-domain') {
+        setError('This domain is not authorized for OAuth operations. Please contact support.');
+      } else {
+        setError(`Failed to sign in with Google: ${authError.message || 'Unknown error'}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -243,7 +313,7 @@ export default function LoginPage() {
     try {
       await sendPasswordResetEmail(auth, email);
       setResetSent(true);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Password reset error:', error);
       const authError = error as AuthError;
       setError(

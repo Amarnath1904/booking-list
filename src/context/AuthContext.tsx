@@ -41,29 +41,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
           // Fetch user role from the API
           const response = await fetch(`/api/users/${firebaseUser.uid}`);
+          
           if (response.ok) {
             const userData = await response.json();
             setUserRole(userData.role);
-              // Set session and role cookies
-            setCookie('session', firebaseUser.uid, 7); // 7 days
+            
+            // Set cookies with path and expiration
+            setCookie('firebaseUid', firebaseUser.uid, 7); // 7 days
+            setCookie('session', 'true', 7); // 7 days
             setCookie('role', userData.role, 7); // 7 days
+            
+            console.log('Auth context: Cookies set for user', firebaseUser.uid);
           } else {
             console.error('Failed to fetch user role');
           }
-        } catch (error) {
+        } catch (error: unknown) {
           console.error('Error fetching user role:', error);
         }
       } else {
         setUserRole(null);
+        
+        // Clear cookies if user is signed out
+        deleteCookie('firebaseUid');
+        deleteCookie('session');
+        deleteCookie('role');
+        
+        console.log('Auth context: User signed out, cookies cleared');
       }
       
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);  const signOut = async () => {
-    try {
-      await firebaseSignOut(auth);      // Clear the session and role cookies
+  }, []);  const signOut = async () => {    try {
+      await firebaseSignOut(auth);
+      // Clear cookies
+      deleteCookie('firebaseUid');
       deleteCookie('session');
       deleteCookie('role');
       router.push('/');

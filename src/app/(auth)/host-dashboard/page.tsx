@@ -2,16 +2,36 @@
 
 import { UserRole } from '@/constants/userRoles';
 import { useRouteProtection } from '@/app/utils/auth-helpers';
-import { useState, ChangeEvent, FormEvent } from 'react';
+import { useState, ChangeEvent, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import Link from 'next/link';
+
+// Define the Property interface
+interface Property {
+  _id: string;
+  name: string;
+  location: string;
+  numberOfRooms: string;
+  pricingType: 'perRoom' | 'perPerson';
+  pricePerUnit: number;
+  description?: string;
+  amenities?: string[];
+  images?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function HostDashboard() {
   // Protect this route - only hosts can access
   const isLoading = useRouteProtection(UserRole.HOST);
-  // Simulate an empty properties array
-  const properties = [];
-
-  const [isDetailsMissing, setIsDetailsMissing] = useState(true); // Simulate missing details
+  // Get current user from auth context
+  const { user } = useAuth();
+  // State for properties
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [propertiesLoading, setPropertiesLoading] = useState(true);
+  const [isDetailsMissing, setIsDetailsMissing] = useState(true);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [formData, setFormData] = useState({
     propertyName: '',
     location: '',
@@ -20,36 +40,183 @@ export default function HostDashboard() {
     upiId: '',
     bankAccountName: '',
     numberOfRooms: '',
-    pricingAmount: '',
     pricingType: 'perRoom', // Default to per room pricing
   });
   const router = useRouter();
+
+  // Fetch user profile data when component mounts
+  useEffect(() => {
+    async function fetchUserProfile() {
+      if (user && user.uid) {
+        try {
+          setIsProfileLoading(true);
+          const response = await fetch(`/api/users/${user.uid}`);
+          
+          if (response.ok) {
+            const userData = await response.json();
+            
+            // Check if user has already completed the host details
+            const hasCompletedProfile = Boolean(
+              userData.propertyName && 
+              userData.location && 
+              userData.phoneNumber && 
+              userData.upiId && 
+              userData.bankAccountName && 
+              userData.numberOfRooms
+            );
+            
+            if (hasCompletedProfile) {
+              // Pre-fill the form with existing data
+              setFormData({
+                propertyName: userData.propertyName || '',
+                location: userData.location || '',
+                phoneNumber: userData.phoneNumber || '',
+                alternateNumber: userData.alternateNumber || '',
+                upiId: userData.upiId || '',
+                bankAccountName: userData.bankAccountName || '',
+                numberOfRooms: userData.numberOfRooms || '',
+                pricingType: userData.pricingType || 'perRoom',
+              });
+              setIsDetailsMissing(false);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+        } finally {
+          setIsProfileLoading(false);
+        }
+      }
+    }
+    
+    fetchUserProfile();
+  }, [user]);
+  // Fetch properties when profile is complete
+  useEffect(() => {
+    async function fetchProperties() {
+      if (user && user.uid && !isDetailsMissing && !isProfileLoading) {
+        try {
+          setPropertiesLoading(true);
+          
+          // Add authentication token to the request
+          const token = await user.getIdToken();
+          
+          const response = await fetch('/api/properties', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log("Properties fetched successfully:", data);
+            setProperties(data);
+          } else {
+            const errorData = await response.json();
+            console.error('Failed to fetch properties', errorData);
+          }
+        } catch (error) {
+          console.error('Error fetching properties:', error);
+        } finally {
+          setPropertiesLoading(false);
+        }
+      }
+    }
+    
+    fetchProperties();
+  }, [user, isDetailsMissing, isProfileLoading]);
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
-
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
+      // Make sure we have a user
+      if (!user) {
+        console.error('User not authenticated');
+        return;
+      }
+
+      // Get Firebase auth token
+      const token = await user.getIdToken();
+
       const response = await fetch('/api/host-details', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...formData,
+          firebaseUid: user.uid
+        }),
       });
 
       if (response.ok) {
+        // Update local state to indicate profile is complete
         setIsDetailsMissing(false);
+        // Show success message or redirect
         router.refresh();
       } else {
-        console.error('Failed to save details');
+        const errorData = await response.json();
+        console.error('Failed to save details', errorData);
       }
     } catch (error) {
       console.error('Error submitting form:', error);
     }
-  };
+  };  // Function to add a sample property for demonstration
+  const addSampleProperty = async () => {
+    try {
+      if (!user) {
+        console.error('User not authenticated');
+        return;
+      }
 
-  if (isLoading) {
+      // Create a new property
+      const newProperty = {
+        name: `${formData.propertyName || 'My Property'} ${properties.length + 1}`,
+        location: formData.location || 'Sample Location',
+        numberOfRooms: formData.numberOfRooms || '4',
+        pricingType: formData.pricingType || 'perRoom',
+        pricePerUnit: 1000, // Sample price
+        description: 'A comfortable property with all amenities',
+        amenities: ['WiFi', 'AC', 'TV', 'Kitchen'],
+      };
+
+      console.log('Adding new property:', newProperty);
+      
+      // Add authentication token to the request
+      const token = await user.getIdToken();
+
+      const response = await fetch('/api/properties', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(newProperty),
+      });
+
+      if (response.ok) {
+        // Refresh properties
+        const propertiesResponse = await fetch('/api/properties', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (propertiesResponse.ok) {
+          const data = await propertiesResponse.json();
+          setProperties(data);
+        }
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to add property', errorData);
+      }
+    } catch (error) {
+      console.error('Error adding property:', error);
+    }
+  };if (isLoading || isProfileLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
@@ -157,8 +324,7 @@ export default function HostDashboard() {
                     className="w-full p-3 border text-black border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                     required
                   />
-                </div>
-                  <div className="space-y-2">
+                </div>                <div className="space-y-2">
                   <label htmlFor="numberOfRooms" className="block text-sm font-medium text-gray-700">
                     Number of Rooms
                   </label>
@@ -174,22 +340,6 @@ export default function HostDashboard() {
                   />
                 </div>
                 
-                <div className="space-y-2">
-                  <label htmlFor="pricingAmount" className="block text-sm font-medium text-gray-700">
-                    Pricing Amount
-                  </label>
-                  <input
-                    id="pricingAmount"
-                    name="pricingAmount"
-                    type="text"
-                    value={formData.pricingAmount}
-                    onChange={handleInputChange}
-                    className="w-full p-3 border text-black border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    required
-                    placeholder="e.g., ₹1000"
-                  />
-                </div>
-
                 <div className="space-y-2 md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700">
                     Pricing Type
@@ -239,15 +389,21 @@ export default function HostDashboard() {
         </div>
       </div>
     );
-  }
-
-  return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Host Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Manage your properties, bookings, and earnings
-        </p>
+  }  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mb-6 flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Host Dashboard</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            Manage your properties, bookings, and earnings
+          </p>
+        </div>
+        <button
+          onClick={addSampleProperty}
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        >
+          Add Property
+        </button>
       </div>
 
       {/* Stats Cards */}
@@ -283,15 +439,75 @@ export default function HostDashboard() {
             <dt className="text-sm font-medium text-gray-500 truncate">
               Monthly Revenue
             </dt>
-            <dd className="mt-1 text-3xl font-semibold text-gray-900">$0</dd>
+            <dd className="mt-1 text-3xl font-semibold text-gray-900">₹0</dd>
           </div>
         </div>
       </div>
 
-      {/* No data to display */}
-      <div className="text-center text-gray-500 mt-10">
-        No properties available to display.
-      </div>
+      {/* Properties List */}
+      {propertiesLoading ? (
+        <div className="text-center py-10">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <p className="mt-2 text-gray-500">Loading properties...</p>
+        </div>
+      ) : properties.length > 0 ? (
+        <div className="bg-white shadow overflow-hidden sm:rounded-md">
+          <ul className="divide-y divide-gray-200">
+            {properties.map((property) => (
+              <li key={property._id} className="px-6 py-4 hover:bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-medium text-gray-900 truncate">{property.name}</h3>
+                    <div className="mt-1 flex items-center text-sm text-gray-500">
+                      <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                      </svg>
+                      <span className="truncate">{property.location}</span>
+                    </div>
+                    <div className="mt-1 flex items-center">
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                        {property.numberOfRooms} Rooms
+                      </span>
+                      <span className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                        {property.pricingType === 'perRoom' ? 'Per Room' : 'Per Person'}
+                      </span>
+                      <span className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                        ₹{property.pricePerUnit} {property.pricingType === 'perRoom' ? '/room' : '/person'}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <Link
+                      href={`/property/${property._id}`}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      View Details
+                    </Link>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <div className="text-center bg-white shadow overflow-hidden sm:rounded-md p-10">
+          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No properties</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            Get started by adding your first property.
+          </p>
+          <div className="mt-6">
+            <button
+              onClick={addSampleProperty}
+              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Add a Property
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
