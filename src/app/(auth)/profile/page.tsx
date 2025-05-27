@@ -75,12 +75,6 @@ export default function ProfilePage() {
         <p className="mt-1 max-w-2xl text-sm text-gray-500">Your personal information and settings</p>
       </div>
       
-      {/* Database Connection Status */}
-      <div className={`px-4 py-2 border-t border-gray-200 ${dbStatus.success ? 'bg-green-50' : 'bg-red-50'}`}>
-        <p className={`text-sm ${dbStatus.success ? 'text-green-700' : 'text-red-700'}`}>
-          <span className="font-medium">Database Status:</span> {dbStatus.message}
-        </p>
-      </div>
       
       <div className="border-t border-gray-200">
         <dl>
@@ -114,7 +108,7 @@ export default function ProfilePage() {
           <div className="shadow sm:rounded-md sm:overflow-hidden">
             <div className="px-4 py-5 bg-white space-y-6 sm:p-6">
               <div>
-                <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="displayName" className="block text-sm font-medium text-black">
                   Display name
                 </label>
                 <div className="mt-1">

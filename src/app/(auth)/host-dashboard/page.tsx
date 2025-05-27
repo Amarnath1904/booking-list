@@ -5,7 +5,6 @@ import { useRouteProtection } from '@/app/utils/auth-helpers';
 import { useState, ChangeEvent, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import Link from 'next/link';
 
 // Define the Property interface
 interface Property {
@@ -13,13 +12,23 @@ interface Property {
   name: string;
   location: string;
   numberOfRooms: string;
-  pricingType: 'perRoom' | 'perPerson';
-  pricePerUnit: number;
-  description?: string;
-  amenities?: string[];
-  images?: string[];
+  phoneNumber: string;
+  alternateNumber?: string;
+  upiId: string;
+  bankAccountName: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// Define the property form data interface
+interface PropertyFormData {
+  name: string;
+  location: string;
+  numberOfRooms: string;
+  phoneNumber: string;
+  alternateNumber: string;
+  upiId: string;
+  bankAccountName: string;
 }
 
 export default function HostDashboard() {
@@ -32,15 +41,21 @@ export default function HostDashboard() {
   const [propertiesLoading, setPropertiesLoading] = useState(true);
   const [isDetailsMissing, setIsDetailsMissing] = useState(true);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
-  const [formData, setFormData] = useState({
-    propertyName: '',
+  // State for showing property form
+  const [showPropertyForm, setShowPropertyForm] = useState(false);
+  // State for currently editing property
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);  // State for property form data
+  const [propertyFormData, setPropertyFormData] = useState<PropertyFormData>({
+    name: '',
     location: '',
+    numberOfRooms: '1',
     phoneNumber: '',
     alternateNumber: '',
     upiId: '',
     bankAccountName: '',
-    numberOfRooms: '',
-    pricingType: 'perRoom', // Default to per room pricing
+  });
+  const [formData, setFormData] = useState({
+    displayName: '',
   });
   const router = useRouter();
 
@@ -54,28 +69,14 @@ export default function HostDashboard() {
           
           if (response.ok) {
             const userData = await response.json();
-            
             // Check if user has already completed the host details
-            const hasCompletedProfile = Boolean(
-              userData.propertyName && 
-              userData.location && 
-              userData.phoneNumber && 
-              userData.upiId && 
-              userData.bankAccountName && 
-              userData.numberOfRooms
-            );
+            // We now check only for displayName
+            const hasCompletedProfile = Boolean(userData.displayName);
             
             if (hasCompletedProfile) {
-              // Pre-fill the form with existing data
+              // Pre-fill the form with existing user data
               setFormData({
-                propertyName: userData.propertyName || '',
-                location: userData.location || '',
-                phoneNumber: userData.phoneNumber || '',
-                alternateNumber: userData.alternateNumber || '',
-                upiId: userData.upiId || '',
-                bankAccountName: userData.bankAccountName || '',
-                numberOfRooms: userData.numberOfRooms || '',
-                pricingType: userData.pricingType || 'perRoom',
+                displayName: userData.displayName || '',
               });
               setIsDetailsMissing(false);
             }
@@ -90,26 +91,27 @@ export default function HostDashboard() {
     
     fetchUserProfile();
   }, [user]);
-  // Fetch properties when profile is complete
+
+  // Fetch properties when component mounts
   useEffect(() => {
     async function fetchProperties() {
-      if (user && user.uid && !isDetailsMissing && !isProfileLoading) {
+      if (user && user.uid && !isProfileLoading) {
         try {
           setPropertiesLoading(true);
-          
           // Add authentication token to the request
           const token = await user.getIdToken();
-          
           const response = await fetch('/api/properties', {
             headers: {
               'Authorization': `Bearer ${token}`
             }
           });
-          
           if (response.ok) {
             const data = await response.json();
-            console.log("Properties fetched successfully:", data);
             setProperties(data);
+            // If no properties, show the property form automatically
+            if (data.length === 0) {
+              setShowPropertyForm(true);
+            }
           } else {
             const errorData = await response.json();
             console.error('Failed to fetch properties', errorData);
@@ -121,13 +123,14 @@ export default function HostDashboard() {
         }
       }
     }
-    
     fetchProperties();
-  }, [user, isDetailsMissing, isProfileLoading]);
+  }, [user, isProfileLoading]);
+
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
@@ -139,20 +142,22 @@ export default function HostDashboard() {
 
       // Get Firebase auth token
       const token = await user.getIdToken();
+      console.log('Submitting host details with token:', token ? 'Token present' : 'No token');
 
-      const response = await fetch('/api/host-details', {
-        method: 'POST',
+      const response = await fetch('/api/users/' + user.uid, {
+        method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          ...formData,
-          firebaseUid: user.uid
+          displayName: formData.displayName
         }),
       });
 
       if (response.ok) {
+        const data = await response.json();
+        console.log('Host details saved successfully:', data);
         // Update local state to indicate profile is complete
         setIsDetailsMissing(false);
         // Show success message or redirect
@@ -164,41 +169,62 @@ export default function HostDashboard() {
     } catch (error) {
       console.error('Error submitting form:', error);
     }
-  };  // Function to add a sample property for demonstration
-  const addSampleProperty = async () => {
+  };
+
+  // Handle property form input changes
+  const handlePropertyInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setPropertyFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handle property form submission
+  const handlePropertySubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     try {
       if (!user) {
         console.error('User not authenticated');
         return;
       }
 
-      // Create a new property
-      const newProperty = {
-        name: `${formData.propertyName || 'My Property'} ${properties.length + 1}`,
-        location: formData.location || 'Sample Location',
-        numberOfRooms: formData.numberOfRooms || '4',
-        pricingType: formData.pricingType || 'perRoom',
-        pricePerUnit: 1000, // Sample price
-        description: 'A comfortable property with all amenities',
-        amenities: ['WiFi', 'AC', 'TV', 'Kitchen'],
-      };
-
-      console.log('Adding new property:', newProperty);
-      
-      // Add authentication token to the request
+      // Get Firebase auth token
       const token = await user.getIdToken();
 
-      const response = await fetch('/api/properties', {
-        method: 'POST',
+      // Determine if we're adding or editing
+      const isEditing = Boolean(editingProperty);
+      const endpoint = isEditing 
+        ? `/api/properties/${editingProperty?._id}` 
+        : '/api/properties';
+      const method = isEditing ? 'PUT' : 'POST';
+
+      // Only send the required fields
+      const {
+        name, location, numberOfRooms, phoneNumber, alternateNumber, upiId, bankAccountName
+      } = propertyFormData;
+      const response = await fetch(endpoint, {
+        method: method,
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(newProperty),
+        body: JSON.stringify({
+          name, location, numberOfRooms, phoneNumber, alternateNumber, upiId, bankAccountName
+        }),
       });
 
-      if (response.ok) {
-        // Refresh properties
+      if (response.ok) {        // Reset form and close it
+        setPropertyFormData({
+          name: '',
+          location: '',
+          numberOfRooms: '1',
+          phoneNumber: '',
+          alternateNumber: '',
+          upiId: '',
+          bankAccountName: '',
+        });
+        setShowPropertyForm(false);
+        setEditingProperty(null);
+        
+        // Refresh properties list
         const propertiesResponse = await fetch('/api/properties', {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -211,22 +237,41 @@ export default function HostDashboard() {
         }
       } else {
         const errorData = await response.json();
-        console.error('Failed to add property', errorData);
+        console.error('Failed to save property', errorData);
       }
     } catch (error) {
-      console.error('Error adding property:', error);
+      console.error('Error submitting property form:', error);
     }
-  };if (isLoading || isProfileLoading) {
+  };
+  // Open property form for editing
+  const editProperty = (property: Property) => {
+    setEditingProperty(property);
+    setPropertyFormData({
+      name: property.name,
+      location: property.location,
+      numberOfRooms: property.numberOfRooms,
+      phoneNumber: property.phoneNumber || '',
+      alternateNumber: property.alternateNumber || '',
+      upiId: property.upiId || '',
+      bankAccountName: property.bankAccountName || '',
+    });
+    setShowPropertyForm(true);
+  };
+
+  // Remove the modal from inside the dashboard return and instead conditionally render either the modal or the dashboard, not both.
+  if (isLoading || isProfileLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
       </div>
     );
   }
+
   if (isDetailsMissing) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gray-50">
-        <div className="w-full max-w-3xl px-4 py-8">          <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+        <div className="w-full max-w-3xl px-4 py-8">
+          <div className="bg-white shadow-lg rounded-lg overflow-hidden">
             <div className="bg-gradient-to-r from-blue-600 to-blue-400 p-6">
               <h2 className="text-2xl font-bold text-white">Complete Your Host Profile</h2>
               <p className="text-white text-opacity-90 mt-2">
@@ -235,148 +280,23 @@ export default function HostDashboard() {
             </div>
             
             <form onSubmit={handleSubmit} className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6">
                 <div className="space-y-2">
-                  <label htmlFor="propertyName" className="block text-sm font-medium text-gray-700">
-                    Property Name
+                  <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
+                    Display Name
                   </label>
                   <input
-                    id="propertyName"
-                    name="propertyName"
+                    id="displayName"
+                    name="displayName"
                     type="text"
-                    value={formData.propertyName}
+                    value={formData.displayName}
                     onChange={handleInputChange}
-                    className="w-full text-black p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                    className="w-full p-3 text-black border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition placeholder-black"
                     required
                   />
-                </div>
-                
-                <div className="space-y-2">
-                  <label htmlFor="location" className="block text-sm font-medium text-gray-700">
-                    Location
-                  </label>
-                  <input
-                    id="location"
-                    name="location"
-                    type="text"
-                    value={formData.location}
-                    onChange={handleInputChange}
-                    className="w-full text-black p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
-                    Phone Number (WhatsApp)
-                  </label>
-                  <input
-                    id="phoneNumber"
-                    name="phoneNumber"
-                    type="tel"
-                    value={formData.phoneNumber}
-                    onChange={handleInputChange}
-                    className="w-full p-3 text-black border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label htmlFor="alternateNumber" className="block text-sm font-medium text-gray-700">
-                    Alternate Number
-                  </label>
-                  <input
-                    id="alternateNumber"
-                    name="alternateNumber"
-                    type="tel"
-                    value={formData.alternateNumber}
-                    onChange={handleInputChange}
-                    className="w-full p-3 text-black border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Optional</p>
-                </div>
-                
-                <div className="space-y-2">
-                  <label htmlFor="upiId" className="block text-sm font-medium text-gray-700">
-                    UPI ID
-                  </label>
-                  <input
-                    id="upiId"
-                    name="upiId"
-                    type="text"
-                    value={formData.upiId}
-                    onChange={handleInputChange}
-                    className="w-full p-3 text-black border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label htmlFor="bankAccountName" className="block text-sm font-medium text-gray-700">
-                    Name on Bank Account
-                  </label>
-                  <input
-                    id="bankAccountName"
-                    name="bankAccountName"
-                    type="text"
-                    value={formData.bankAccountName}
-                    onChange={handleInputChange}
-                    className="w-full p-3 border text-black border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    required
-                  />
-                </div>                <div className="space-y-2">
-                  <label htmlFor="numberOfRooms" className="block text-sm font-medium text-gray-700">
-                    Number of Rooms
-                  </label>
-                  <input
-                    id="numberOfRooms"
-                    name="numberOfRooms"
-                    type="number"
-                    min="1"
-                    value={formData.numberOfRooms}
-                    onChange={handleInputChange}
-                    className="w-full p-3 border text-black border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2 md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Pricing Type
-                  </label>
-                  <div className="mt-2 flex gap-6">
-                    <div className="flex items-center">
-                      <input
-                        id="perRoom"
-                        name="pricingType"
-                        type="radio"
-                        value="perRoom"
-                        checked={formData.pricingType === 'perRoom'}
-                        onChange={handleInputChange}
-                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                      />
-                      <label htmlFor="perRoom" className="ml-2 block text-sm text-gray-700">
-                        Per Room
-                      </label>
-                    </div>
-                    <div className="flex items-center">
-                      <input
-                        id="perPerson"
-                        name="pricingType"
-                        type="radio"
-                        value="perPerson"
-                        checked={formData.pricingType === 'perPerson'}
-                        onChange={handleInputChange}
-                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                      />
-                      <label htmlFor="perPerson" className="ml-2 block text-sm text-gray-700">
-                        Per Person
-                      </label>
-                    </div>
-                  </div>
                 </div>
               </div>
-                <div className="mt-8 flex justify-end">
+              <div className="mt-8 flex justify-end">
                 <button
                   type="submit"
                   className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-400 hover:from-blue-700 hover:to-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
@@ -389,7 +309,127 @@ export default function HostDashboard() {
         </div>
       </div>
     );
-  }  return (
+  }
+
+  // If there are no properties or the modal is open, show ONLY the property form modal and do not render the dashboard
+  if (showPropertyForm || properties.length === 0) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gray-50">
+        <form onSubmit={handlePropertySubmit} className="bg-white p-8 rounded shadow-md w-full max-w-lg">
+          <h3 className="text-lg leading-6 font-medium text-black mb-4">
+            {editingProperty ? 'Edit Property' : 'Add New Property'}
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-black">Property Name</label>
+              <input
+                type="text"
+                name="name"
+                id="name"
+                value={propertyFormData.name}
+                onChange={handlePropertyInputChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-black placeholder-black"
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="location" className="block text-sm font-medium text-black">Location</label>
+              <input
+                type="text"
+                name="location"
+                id="location"
+                value={propertyFormData.location}
+                onChange={handlePropertyInputChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-black placeholder-black"
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="numberOfRooms" className="block text-sm font-medium text-black">Number of Rooms</label>
+              <input
+                type="number"
+                name="numberOfRooms"
+                id="numberOfRooms"
+                min="1"
+                value={propertyFormData.numberOfRooms}
+                onChange={handlePropertyInputChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-black placeholder-black"
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="phoneNumber" className="block text-sm font-medium text-black">Phone Number (WhatsApp)</label>
+              <input
+                type="tel"
+                name="phoneNumber"
+                id="phoneNumber"
+                value={propertyFormData.phoneNumber}
+                onChange={handlePropertyInputChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-black placeholder-black"
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="alternateNumber" className="block text-sm font-medium text-black">Alternate Number</label>
+              <input
+                type="tel"
+                name="alternateNumber"
+                id="alternateNumber"
+                value={propertyFormData.alternateNumber}
+                onChange={handlePropertyInputChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-black placeholder-black"
+              />
+            </div>
+            <div>
+              <label htmlFor="upiId" className="block text-sm font-medium text-black">UPI ID</label>
+              <input
+                type="text"
+                name="upiId"
+                id="upiId"
+                value={propertyFormData.upiId}
+                onChange={handlePropertyInputChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-black placeholder-black"
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="bankAccountName" className="block text-sm font-medium text-black">Name on Bank Account</label>
+              <input
+                type="text"
+                name="bankAccountName"
+                id="bankAccountName"
+                value={propertyFormData.bankAccountName}
+                onChange={handlePropertyInputChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-black placeholder-black"
+                required
+              />
+            </div>
+          </div>
+          <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+            <button
+              type="submit"
+              className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:col-start-2 sm:text-sm"
+            >
+              {editingProperty ? 'Save Changes' : 'Add Property'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowPropertyForm(false);
+                setEditingProperty(null);
+              }}
+              className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:col-start-1 sm:text-sm"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  // Otherwise, show the dashboard
+  return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6 flex justify-between items-center">
         <div>
@@ -398,12 +438,6 @@ export default function HostDashboard() {
             Manage your properties, bookings, and earnings
           </p>
         </div>
-        <button
-          onClick={addSampleProperty}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          Add Property
-        </button>
       </div>
 
       {/* Stats Cards */}
@@ -464,50 +498,32 @@ export default function HostDashboard() {
                       </svg>
                       <span className="truncate">{property.location}</span>
                     </div>
-                    <div className="mt-1 flex items-center">
+                    <div className="mt-1 flex flex-wrap gap-2 text-sm">
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                         {property.numberOfRooms} Rooms
                       </span>
-                      <span className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                        {property.pricingType === 'perRoom' ? 'Per Room' : 'Per Person'}
-                      </span>
-                      <span className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-                        ₹{property.pricePerUnit} {property.pricingType === 'perRoom' ? '/room' : '/person'}
-                      </span>
+                    </div>
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 text-sm text-gray-700">
+                      <div><span className="font-semibold">Phone Number:</span> {property.phoneNumber}</div>
+                      {property.alternateNumber && <div><span className="font-semibold">Alternate Number:</span> {property.alternateNumber}</div>}
+                      <div><span className="font-semibold">UPI ID:</span> {property.upiId}</div>
+                      <div><span className="font-semibold">Bank Account Name:</span> {property.bankAccountName}</div>
                     </div>
                   </div>
-                  <div>
-                    <Link
-                      href={`/property/${property._id}`}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  <div className="flex space-x-2 ml-4">
+                    <button
+                      onClick={() => editProperty(property)}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
-                      View Details
-                    </Link>
+                      Edit
+                    </button>
                   </div>
                 </div>
               </li>
             ))}
           </ul>
         </div>
-      ) : (
-        <div className="text-center bg-white shadow overflow-hidden sm:rounded-md p-10">
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-          </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No properties</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Get started by adding your first property.
-          </p>
-          <div className="mt-6">
-            <button
-              onClick={addSampleProperty}
-              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Add a Property
-            </button>
-          </div>
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }

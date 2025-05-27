@@ -7,7 +7,7 @@ import { getAuth } from '@/lib/db-utils';
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
-    const { userId, role } = await getAuth(request);
+    const { userId } = await getAuth(request);
 
     console.log('Fetching properties for user:', userId);
 
@@ -47,22 +47,30 @@ export async function POST(request: NextRequest) {
 
     const data = await request.json();
     console.log('Creating property with data:', data);
-    
+    // Only use required fields for property creation
+    const {
+      name, location, numberOfRooms, phoneNumber, alternateNumber, upiId, bankAccountName, images
+    } = data;
     // Validate required fields
-    if (!data.name || !data.location || !data.numberOfRooms || !data.pricingType) {
+    if (!name || !location || !numberOfRooms || !phoneNumber || !upiId || !bankAccountName) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
-    
     // Create a new property with the host ID
     const property = await Property.create({
-      ...data,
+      name,
+      location,
+      numberOfRooms,
+      phoneNumber,
+      alternateNumber,
+      upiId,
+      bankAccountName,
+      images,
       hostId: userId
     });
 
-    console.log('Created property:', property);
     return NextResponse.json(property, { status: 201 });
   } catch (error) {
     console.error('Error creating property:', error);

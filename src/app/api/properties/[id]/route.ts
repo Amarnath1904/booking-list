@@ -10,7 +10,7 @@ export async function GET(
 ) {
   try {
     await dbConnect();
-    const { userId, role } = await getAuth(request);
+    const { userId } = await getAuth(request);
 
     if (!userId) {
       return NextResponse.json(
@@ -53,7 +53,7 @@ export async function PUT(
 ) {
   try {
     await dbConnect();
-    const { userId, role } = await getAuth(request);
+    const { userId } = await getAuth(request);
 
     if (!userId) {
       return NextResponse.json(
@@ -77,14 +77,30 @@ export async function PUT(
         { error: 'Forbidden' },
         { status: 403 }
       );
+    }    const data = await request.json();
+    const {
+      name, location, numberOfRooms, phoneNumber, alternateNumber, upiId, bankAccountName, images
+    } = data;
+    // Validate required fields
+    if (!name || !location || !numberOfRooms || !phoneNumber || !upiId || !bankAccountName) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
     }
-
-    const data = await request.json();
-    
     // Update the property
     const updatedProperty = await Property.findByIdAndUpdate(
       params.id,
-      { $set: data },
+      { $set: {
+        name,
+        location,
+        numberOfRooms,
+        phoneNumber,
+        alternateNumber,
+        upiId,
+        bankAccountName,
+        images
+      } },
       { new: true, runValidators: true }
     );
 
@@ -105,7 +121,7 @@ export async function DELETE(
 ) {
   try {
     await dbConnect();
-    const { userId, role } = await getAuth(request);
+    const { userId } = await getAuth(request);
 
     if (!userId) {
       return NextResponse.json(

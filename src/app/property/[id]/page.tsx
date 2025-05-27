@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 
@@ -12,16 +11,16 @@ interface Property {
   numberOfRooms: string;
   pricingType: 'perRoom' | 'perPerson';
   pricePerUnit: number;
-  description?: string;
-  amenities?: string[];
   images?: string[];
+  phoneNumber: string;
+  alternateNumber?: string;
+  upiId: string;
+  bankAccountName: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export default function PropertyDetails({ params }: { params: { id: string } }) {
-  const { user } = useAuth();
-  const router = useRouter();
+export default function PropertyDetails({ params }: { params: { id: string } }) {  const { user } = useAuth();
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -115,45 +114,49 @@ export default function PropertyDetails({ params }: { params: { id: string } }) 
               <dd className="mt-1 text-sm text-gray-900">{property.numberOfRooms}</dd>
             </div>
             <div className="sm:col-span-1">
-              <dt className="text-sm font-medium text-gray-500">Pricing Type</dt>
-              <dd className="mt-1 text-sm text-gray-900">{property.pricingType === 'perRoom' ? 'Per Room' : 'Per Person'}</dd>
-            </div>
-            <div className="sm:col-span-1">
-              <dt className="text-sm font-medium text-gray-500">Price</dt>
-              <dd className="mt-1 text-sm text-gray-900">₹{property.pricePerUnit} {property.pricingType === 'perRoom' ? '/room' : '/person'}</dd>
-            </div>
-            <div className="sm:col-span-1">
               <dt className="text-sm font-medium text-gray-500">Created</dt>
               <dd className="mt-1 text-sm text-gray-900">{new Date(property.createdAt).toLocaleDateString()}</dd>
             </div>
-            {property.description && (
-              <div className="sm:col-span-2">
-                <dt className="text-sm font-medium text-gray-500">Description</dt>
-                <dd className="mt-1 text-sm text-gray-900">{property.description}</dd>
-              </div>
-            )}
-            {property.amenities && property.amenities.length > 0 && (
-              <div className="sm:col-span-2">
-                <dt className="text-sm font-medium text-gray-500">Amenities</dt>
-                <dd className="mt-1 text-sm text-gray-900">
-                  <ul className="flex flex-wrap gap-2">
-                    {property.amenities.map((amenity, index) => (
-                      <li key={index} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">
-                        {amenity}
-                      </li>
-                    ))}
-                  </ul>
-                </dd>
-              </div>
-            )}
+            <div className="sm:col-span-2">
+              <dt className="text-sm font-medium text-gray-500">Contact Information</dt>
+              <dd className="mt-1 text-sm text-gray-900">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <p className="font-medium">Phone Number (WhatsApp):</p>
+                    <p>{property.phoneNumber}</p>
+                  </div>
+                  {property.alternateNumber && (
+                    <div>
+                      <p className="font-medium">Alternate Number:</p>
+                      <p>{property.alternateNumber}</p>
+                    </div>
+                  )}
+                </div>
+              </dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-sm font-medium text-gray-500">Payment Information</dt>
+              <dd className="mt-1 text-sm text-gray-900">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <p className="font-medium">UPI ID:</p>
+                    <p>{property.upiId}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Bank Account Name:</p>
+                    <p>{property.bankAccountName}</p>
+                  </div>
+                </div>
+              </dd>
+            </div>
           </dl>
-        </div>
-        <div className="px-4 py-5 sm:px-6 bg-gray-50 flex justify-end">
-          <button
+        </div>        <div className="px-4 py-5 sm:px-6 bg-gray-50 flex justify-end">
+          <Link
+            href="/host-dashboard"
             className="inline-flex items-center px-4 py-2 mr-3 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             Edit Property
-          </button>
+          </Link>
           <button
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >

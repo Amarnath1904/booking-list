@@ -5,11 +5,11 @@ export interface IProperty extends Document {
   name: string;
   location: string;
   numberOfRooms: string;
-  pricingType: 'perRoom' | 'perPerson';
-  pricePerUnit: number;
-  description?: string;
-  amenities?: string[];
   images?: string[];
+  phoneNumber: string;
+  alternateNumber?: string;
+  upiId: string;
+  bankAccountName: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -20,16 +20,11 @@ const PropertySchema: Schema = new Schema(
     name: { type: String, required: true },
     location: { type: String, required: true },
     numberOfRooms: { type: String, required: true },
-    pricingType: { 
-      type: String,
-      enum: ['perRoom', 'perPerson'],
-      default: 'perRoom',
-      required: true
-    },
-    pricePerUnit: { type: Number, required: true, default: 1000 },
-    description: { type: String },
-    amenities: [{ type: String }],
     images: [{ type: String }],
+    phoneNumber: { type: String, required: true },
+    alternateNumber: { type: String },
+    upiId: { type: String, required: true },
+    bankAccountName: { type: String, required: true }
   },
   { timestamps: true }
 );

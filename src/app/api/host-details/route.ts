@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
-import Property from '@/models/Property';
 import { getAuth } from '@/lib/db-utils';
 
+// This endpoint is now only used to check if a host exists and to get their profile status
 export async function POST(request: NextRequest) {
   try {
     await dbConnect();
@@ -12,48 +12,18 @@ export async function POST(request: NextRequest) {
     
     // Get the authenticated user ID from the request
     const { userId } = await getAuth(request);
-    const firebaseUid = userId || data.firebaseUid;
+    const uid = userId || data.firebaseUid;
     
-    if (!firebaseUid) {
+    if (!uid) {
       return NextResponse.json(
         { error: 'Unauthorized - No valid user ID found' },
         { status: 401 }
       );
     }
     
-    const {
-      propertyName,
-      location,
-      phoneNumber,
-      alternateNumber,
-      upiId,
-      bankAccountName,
-      numberOfRooms,
-      pricingType,
-    } = data;    if (!firebaseUid || !propertyName || !location || !phoneNumber || !upiId || !bankAccountName || !numberOfRooms || !pricingType) {
-      console.log('Missing required fields', { 
-        firebaseUid, propertyName, location, phoneNumber, 
-        upiId, bankAccountName, numberOfRooms, pricingType 
-      });
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
+    // Simply validate the user exists
+    const user = await User.findOne({ firebaseUid: uid });
     
-    const user = await User.findOneAndUpdate(
-      { firebaseUid },
-      {
-        $set: {
-          phoneNumber,
-          alternateNumber,
-          upiId,
-          bankAccountName,
-        },
-      },
-      { new: true, runValidators: true }
-    );
-
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -61,24 +31,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create a property in the Property collection
-    const property = await Property.create({
-      hostId: firebaseUid,
-      name: propertyName,
-      location: location,
-      numberOfRooms: numberOfRooms,
-      pricingType: pricingType,
-      pricePerUnit: 1000, // Default price
-      description: 'A comfortable property with all amenities',
-      amenities: ['WiFi', 'AC', 'TV', 'Kitchen'],
-    });
+    // Check if the user profile is complete
+    // A complete profile now only requires a displayName
+    const hasCompletedProfile = Boolean(user.displayName);
 
-    // Return full user object with property data
+    // Return user object and profile status
     return NextResponse.json({
       user,
-      property
-    });} catch (error) {
-    console.error('Error saving host details:', error);
+      profileComplete: hasCompletedProfile
+    });
+  } catch (error) {
+    console.error('Error checking host details:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

@@ -20,29 +20,17 @@ export async function getAuth(request?: NextRequest) {
       if (authCookie) {
         firebaseUid = authCookie.value;
       }
-        // If not found and we have an Authorization header, we could use that
+      
+      // If not found and we have an Authorization header, we could use that
+      // In a real app, you would verify the token with Firebase Admin SDK
       if (!firebaseUid) {
         const authHeader = request.headers.get('Authorization');
         if (authHeader && authHeader.startsWith('Bearer ')) {
-          // Extract the token from the Authorization header
-          const token = authHeader.substring(7); // Remove "Bearer " prefix
-          
-          // In a real app, you would verify the token with Firebase Admin SDK
-          // For now, just use the token as the UID for demo purposes
-          // This is a simplified approach
-          try {
-            // Try to get the UID from the cookie again
-            const authCookie = request.cookies.get('firebaseUid');
-            if (authCookie) {
-              firebaseUid = authCookie.value;
-            } else {
-              // For simplicity in this demo, we'll assume the token is valid
-              // and contains the UID. In a real app, you'd verify this.
-              console.log('Using Authorization header token as UID');
-              firebaseUid = token; // This is a simplification!
-            }
-          } catch (error) {
-            console.error('Error handling Authorization header:', error);
+          // In this demo, if there's a token, just check for the cookie again
+          // This is a simplified approach - in production you'd validate the token
+          const authCookie = request.cookies.get('firebaseUid');
+          if (authCookie) {
+            firebaseUid = authCookie.value;
           }
         }
       }
