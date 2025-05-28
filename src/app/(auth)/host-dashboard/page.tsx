@@ -11,7 +11,6 @@ interface Property {
   _id: string;
   name: string;
   location: string;
-  numberOfRooms: string;
   phoneNumber: string;
   alternateNumber?: string;
   upiId: string;
@@ -24,7 +23,6 @@ interface Property {
 interface PropertyFormData {
   name: string;
   location: string;
-  numberOfRooms: string;
   phoneNumber: string;
   alternateNumber: string;
   upiId: string;
@@ -48,7 +46,6 @@ export default function HostDashboard() {
   const [propertyFormData, setPropertyFormData] = useState<PropertyFormData>({
     name: '',
     location: '',
-    numberOfRooms: '1',
     phoneNumber: '',
     alternateNumber: '',
     upiId: '',
@@ -198,7 +195,7 @@ export default function HostDashboard() {
 
       // Only send the required fields
       const {
-        name, location, numberOfRooms, phoneNumber, alternateNumber, upiId, bankAccountName
+        name, location, phoneNumber, alternateNumber, upiId, bankAccountName
       } = propertyFormData;
       const response = await fetch(endpoint, {
         method: method,
@@ -207,7 +204,7 @@ export default function HostDashboard() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          name, location, numberOfRooms, phoneNumber, alternateNumber, upiId, bankAccountName
+          name, location, phoneNumber, alternateNumber, upiId, bankAccountName
         }),
       });
 
@@ -215,7 +212,6 @@ export default function HostDashboard() {
         setPropertyFormData({
           name: '',
           location: '',
-          numberOfRooms: '1',
           phoneNumber: '',
           alternateNumber: '',
           upiId: '',
@@ -249,7 +245,6 @@ export default function HostDashboard() {
     setPropertyFormData({
       name: property.name,
       location: property.location,
-      numberOfRooms: property.numberOfRooms,
       phoneNumber: property.phoneNumber || '',
       alternateNumber: property.alternateNumber || '',
       upiId: property.upiId || '',
@@ -339,19 +334,6 @@ export default function HostDashboard() {
                 name="location"
                 id="location"
                 value={propertyFormData.location}
-                onChange={handlePropertyInputChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-black placeholder-black"
-                required
-              />
-            </div>
-            <div>
-              <label htmlFor="numberOfRooms" className="block text-sm font-medium text-black">Number of Rooms</label>
-              <input
-                type="number"
-                name="numberOfRooms"
-                id="numberOfRooms"
-                min="1"
-                value={propertyFormData.numberOfRooms}
                 onChange={handlePropertyInputChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-black placeholder-black"
                 required
@@ -499,9 +481,7 @@ export default function HostDashboard() {
                       <span className="truncate">{property.location}</span>
                     </div>
                     <div className="mt-1 flex flex-wrap gap-2 text-sm">
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                        {property.numberOfRooms} Rooms
-                      </span>
+                      {/* Removed numberOfRooms display as the field no longer exists */}
                     </div>
                     <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 text-sm text-gray-700">
                       <div><span className="font-semibold">Phone Number:</span> {property.phoneNumber}</div>

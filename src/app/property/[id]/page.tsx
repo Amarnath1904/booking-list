@@ -8,9 +8,6 @@ interface Property {
   _id: string;
   name: string;
   location: string;
-  numberOfRooms: string;
-  pricingType: 'perRoom' | 'perPerson';
-  pricePerUnit: number;
   images?: string[];
   phoneNumber: string;
   alternateNumber?: string;
@@ -109,10 +106,6 @@ export default function PropertyDetails({ params }: { params: { id: string } }) 
         </div>
         <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
           <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
-            <div className="sm:col-span-1">
-              <dt className="text-sm font-medium text-gray-500">Number of Rooms</dt>
-              <dd className="mt-1 text-sm text-gray-900">{property.numberOfRooms}</dd>
-            </div>
             <div className="sm:col-span-1">
               <dt className="text-sm font-medium text-gray-500">Created</dt>
               <dd className="mt-1 text-sm text-gray-900">{new Date(property.createdAt).toLocaleDateString()}</dd>

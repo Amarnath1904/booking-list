@@ -49,10 +49,10 @@ export async function POST(request: NextRequest) {
     console.log('Creating property with data:', data);
     // Only use required fields for property creation
     const {
-      name, location, numberOfRooms, phoneNumber, alternateNumber, upiId, bankAccountName, images
+      name, location, phoneNumber, alternateNumber, upiId, bankAccountName, images
     } = data;
     // Validate required fields
-    if (!name || !location || !numberOfRooms || !phoneNumber || !upiId || !bankAccountName) {
+    if (!name || !location || !phoneNumber || !upiId || !bankAccountName) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -62,7 +62,6 @@ export async function POST(request: NextRequest) {
     const property = await Property.create({
       name,
       location,
-      numberOfRooms,
       phoneNumber,
       alternateNumber,
       upiId,

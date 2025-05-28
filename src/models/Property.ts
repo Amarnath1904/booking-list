@@ -4,7 +4,6 @@ export interface IProperty extends Document {
   hostId: string; // Firebase UID of the host
   name: string;
   location: string;
-  numberOfRooms: string;
   images?: string[];
   phoneNumber: string;
   alternateNumber?: string;
@@ -19,7 +18,6 @@ const PropertySchema: Schema = new Schema(
     hostId: { type: String, required: true, index: true },
     name: { type: String, required: true },
     location: { type: String, required: true },
-    numberOfRooms: { type: String, required: true },
     images: [{ type: String }],
     phoneNumber: { type: String, required: true },
     alternateNumber: { type: String },
