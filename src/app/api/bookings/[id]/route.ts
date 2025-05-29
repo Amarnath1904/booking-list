@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Booking, { BookingStatus } from '@/models/Booking';
 import mongoose from 'mongoose';
-import { getTokenFromRequest } from '@/app/utils/auth-helpers';
+import { getTokenFromRequest } from '@/app/utils/server-auth';
 import { auth } from '@/firebase/config';
 
 interface RouteParams {
