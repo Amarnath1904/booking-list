@@ -412,13 +412,31 @@ export default function HostDashboard() {
 
   // Otherwise, show the dashboard
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-6 flex justify-between items-center">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">      <div className="mb-6 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Host Dashboard</h1>
           <p className="mt-1 text-sm text-gray-600">
             Manage your properties, bookings, and earnings
           </p>
+        </div>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => {
+              setPropertyFormData({
+                name: '',
+                location: '',
+                phoneNumber: '',
+                alternateNumber: '',
+                upiId: '',
+                bankAccountName: '',
+              });
+              setEditingProperty(null);
+              setShowPropertyForm(true);
+            }}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Add New Property
+          </button>
         </div>
       </div>
 
@@ -486,8 +504,7 @@ export default function HostDashboard() {
                     <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 text-sm text-gray-700">
                       <div><span className="font-semibold">Phone Number:</span> {property.phoneNumber}</div>
                       {property.alternateNumber && <div><span className="font-semibold">Alternate Number:</span> {property.alternateNumber}</div>}
-                      <div><span className="font-semibold">UPI ID:</span> {property.upiId}</div>
-                      <div><span className="font-semibold">Bank Account Name:</span> {property.bankAccountName}</div>
+                      <div><span className="font-semibold">UPI ID:</span> {property.upiId}</div>                      <div><span className="font-semibold">Bank Account Name:</span> {property.bankAccountName}</div>
                     </div>
                   </div>
                   <div className="flex space-x-2 ml-4">
@@ -496,6 +513,48 @@ export default function HostDashboard() {
                       className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
                       Edit
+                    </button>                    <button
+                      onClick={() => router.push(`/property/${property._id}/add-room`)}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      Add Room
+                    </button>
+                    <button
+                      onClick={() => router.push(`/property/${property._id}/add-images`)}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    >
+                      Add Images
+                    </button>                    <button
+                      onClick={() => {
+                        console.log("Navigating to property:", property._id);
+                        // Show the user's authentication state before navigation
+                        if (user) {
+                          console.log("User is authenticated:", user.uid);
+                          console.log("Getting token for navigation...");
+                          
+                          // Ensure the token is fresh before navigation
+                          user.getIdToken(true).then(token => {
+                            console.log("Fresh token obtained:", token ? "Yes" : "No");
+                            
+                            // Store token in sessionStorage to ensure it's available immediately on the next page
+                            sessionStorage.setItem('authToken', token);
+                            
+                            // Add a small delay to ensure token is saved before navigation
+                            setTimeout(() => {
+                              router.push(`/property/${property._id}`);
+                            }, 100);
+                          }).catch(err => {
+                            console.error("Error getting token:", err);
+                            router.push(`/property/${property._id}`);
+                          });
+                        } else {
+                          console.log("No user available, cannot navigate to property details");
+                          alert("Please wait until you're fully logged in before viewing property details");
+                        }
+                      }}
+                      className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      View
                     </button>
                   </div>
                 </div>

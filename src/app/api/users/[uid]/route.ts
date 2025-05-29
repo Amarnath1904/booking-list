@@ -22,9 +22,9 @@ export async function GET(
     
     return NextResponse.json(user);
   } catch (error) {
-    console.error('Error fetching user:', error);
+    console.error('Error fetching user in API route (GET /api/users/[uid]):', error); // Added detailed logging
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) }, // Optionally include error message in response for debugging
       { status: 500 }
     );
   }
@@ -54,9 +54,9 @@ export async function PUT(
     
     return NextResponse.json(user);
   } catch (error) {
-    console.error('Error updating user:', error);
+    console.error('Error updating user in API route (PUT /api/users/[uid]):', error); // Added detailed logging
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) }, // Optionally include error message in response for debugging
       { status: 500 }
     );
   }

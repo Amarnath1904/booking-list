@@ -31,49 +31,59 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Initial state is true
   const router = useRouter();
+
   useEffect(() => {
+    console.log("AuthContext: useEffect for onAuthStateChanged mounted.");
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      
-      if (firebaseUser) {
-        try {
-          // Fetch user role from the API
+      console.log("AuthContext: onAuthStateChanged callback triggered. Firebase user UID:", firebaseUser?.uid || 'null');
+      setUser(firebaseUser); 
+
+      try {
+        if (firebaseUser) {
+          console.log(`AuthContext: Firebase user found (UID: ${firebaseUser.uid}). Fetching user role.`);
           const response = await fetch(`/api/users/${firebaseUser.uid}`);
           
           if (response.ok) {
             const userData = await response.json();
             setUserRole(userData.role);
+            console.log(`AuthContext: Role fetched: ${userData.role} for user ${firebaseUser.uid}.`);
             
-            // Set cookies with path and expiration
-            setCookie('firebaseUid', firebaseUser.uid, 7); // 7 days
-            setCookie('session', 'true', 7); // 7 days
-            setCookie('role', userData.role, 7); // 7 days
-            
-            console.log('Auth context: Cookies set for user', firebaseUser.uid);
+            setCookie('firebaseUid', firebaseUser.uid, 7);
+            setCookie('session', 'true', 7);
+            setCookie('role', userData.role, 7);
+            console.log('AuthContext: Cookies set for user', firebaseUser.uid);
           } else {
-            console.error('Failed to fetch user role');
+            console.error(`AuthContext: Failed to fetch user role for ${firebaseUser.uid}, status: ${response.status}. Response text: ${await response.text()}`);
+            setUserRole(null); 
           }
-        } catch (error: unknown) {
-          console.error('Error fetching user role:', error);
+        } else {
+          console.log('AuthContext: No Firebase user. Clearing role and cookies.');
+          setUserRole(null);
+          deleteCookie('firebaseUid');
+          deleteCookie('session');
+          deleteCookie('role');
+          console.log('AuthContext: User signed out, cookies cleared');
         }
-      } else {
-        setUserRole(null);
-        
-        // Clear cookies if user is signed out
-        deleteCookie('firebaseUid');
-        deleteCookie('session');
-        deleteCookie('role');
-        
-        console.log('Auth context: User signed out, cookies cleared');
+      } catch (error: unknown) {
+        console.error('AuthContext: Error during auth state processing (fetching role or setting cookies):', error);
+        setUserRole(null); 
+      } finally {
+        console.log(`AuthContext: Reached finally block for user ${firebaseUser?.uid || 'null'}. Calling setLoading(false).`);
+        setLoading(false);
+        console.log(`AuthContext: setLoading(false) called. Current loading state should be false.`);
       }
-      
-      setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, []);  const signOut = async () => {    try {
+    return () => {
+      console.log("AuthContext: Unsubscribing from onAuthStateChanged.");
+      unsubscribe();
+    };
+  }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
+
+  const signOut = async () => {
+    try {
       await firebaseSignOut(auth);
       // Clear cookies
       deleteCookie('firebaseUid');
