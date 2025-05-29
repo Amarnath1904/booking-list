@@ -50,6 +50,16 @@ export default function PropertyDetails() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [pageLoading, setPageLoading] = useState(true); 
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const bookingUrl = typeof window !== 'undefined' ? `${window.location.origin}/property/${propertyId}/book` : '';
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(bookingUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   useEffect(() => {
     const currentRole = userRole;
@@ -253,8 +263,7 @@ export default function PropertyDetails() {
       </header>
 
       <main className="py-10">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Property Information Card */}
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">          {/* Property Information Card */}
           <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
             <div className="px-4 py-5 sm:px-6">
               <h2 className="text-xl font-semibold text-gray-900">{property.name}</h2>
@@ -262,6 +271,25 @@ export default function PropertyDetails() {
             </div>
             <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
               <dl className="sm:divide-y sm:divide-gray-200">
+                {userRole === UserRole.HOST && (
+                  <div className="py-3 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Shareable Booking URL</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 flex items-center">
+                      <input 
+                        type="text" 
+                        value={bookingUrl} 
+                        readOnly 
+                        className="flex-1 block w-full border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <button 
+                        onClick={copyToClipboard} 
+                        className="ml-2 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      >
+                        {copied ? 'Copied!' : 'Copy'}
+                      </button>
+                    </dd>
+                  </div>
+                )}
                 <div className="py-3 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                   <dt className="text-sm font-medium text-gray-500">Contact Number</dt>
                   <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{property.phoneNumber}</dd>

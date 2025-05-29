@@ -6,6 +6,13 @@ import { useState, ChangeEvent, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
+// Define BookingStatus enum here instead of importing from server-side model
+enum BookingStatus {
+  PENDING = 'pending',
+  CONFIRMED = 'confirmed',
+  REJECTED = 'rejected'
+}
+
 // Define the Property interface
 interface Property {
   _id: string;
@@ -17,6 +24,12 @@ interface Property {
   bankAccountName: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// Define simple booking interface for dashboard stats
+interface BookingStat {
+  _id: string;
+  bookingStatus: BookingStatus;
 }
 
 // Define the property form data interface
@@ -33,8 +46,7 @@ export default function HostDashboard() {
   // Protect this route - only hosts can access
   const isLoading = useRouteProtection(UserRole.HOST);
   // Get current user from auth context
-  const { user } = useAuth();
-  // State for properties
+  const { user } = useAuth();  // State for properties
   const [properties, setProperties] = useState<Property[]>([]);
   const [propertiesLoading, setPropertiesLoading] = useState(true);
   const [isDetailsMissing, setIsDetailsMissing] = useState(true);
@@ -42,7 +54,8 @@ export default function HostDashboard() {
   // State for showing property form
   const [showPropertyForm, setShowPropertyForm] = useState(false);
   // State for currently editing property
-  const [editingProperty, setEditingProperty] = useState<Property | null>(null);  // State for property form data
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);  
+  // State for property form data
   const [propertyFormData, setPropertyFormData] = useState<PropertyFormData>({
     name: '',
     location: '',
@@ -54,6 +67,10 @@ export default function HostDashboard() {
   const [formData, setFormData] = useState({
     displayName: '',
   });
+  // State for bookings
+  const [bookings, setBookings] = useState<BookingStat[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
+  
   const router = useRouter();
 
   // Fetch user profile data when component mounts
@@ -88,7 +105,6 @@ export default function HostDashboard() {
     
     fetchUserProfile();
   }, [user]);
-
   // Fetch properties when component mounts
   useEffect(() => {
     async function fetchProperties() {
@@ -121,6 +137,34 @@ export default function HostDashboard() {
       }
     }
     fetchProperties();
+  }, [user, isProfileLoading]);
+
+  // Fetch bookings for stats
+  useEffect(() => {
+    async function fetchBookings() {
+      if (user && user.uid && !isProfileLoading) {
+        try {
+          setBookingsLoading(true);
+          const token = await user.getIdToken();
+          const response = await fetch('/api/bookings', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setBookings(data);
+          } else {
+            console.error('Failed to fetch bookings');
+          }
+        } catch (error) {
+          console.error('Error fetching bookings:', error);
+        } finally {
+          setBookingsLoading(false);
+        }
+      }
+    }
+    fetchBookings();
   }, [user, isProfileLoading]);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -409,17 +453,23 @@ export default function HostDashboard() {
       </div>
     );
   }
-
   // Otherwise, show the dashboard
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">      <div className="mb-6 flex justify-between items-center">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">      
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Host Dashboard</h1>
           <p className="mt-1 text-sm text-gray-600">
             Manage your properties, bookings, and earnings
           </p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => router.push('/host-dashboard/bookings')}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          >
+            View Bookings
+          </button>
           <button
             onClick={() => {
               setPropertyFormData({
@@ -438,9 +488,7 @@ export default function HostDashboard() {
             Add New Property
           </button>
         </div>
-      </div>
-
-      {/* Stats Cards */}
+      </div>      {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
@@ -455,9 +503,15 @@ export default function HostDashboard() {
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
             <dt className="text-sm font-medium text-gray-500 truncate">
-              Average Occupancy
+              Total Bookings
             </dt>
-            <dd className="mt-1 text-3xl font-semibold text-gray-900">0%</dd>
+            <dd className="mt-1 text-3xl font-semibold text-gray-900">
+              {bookingsLoading ? (
+                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+              ) : (
+                bookings.length
+              )}
+            </dd>
           </div>
         </div>
         <div className="bg-white overflow-hidden shadow rounded-lg">
@@ -465,15 +519,27 @@ export default function HostDashboard() {
             <dt className="text-sm font-medium text-gray-500 truncate">
               Active Bookings
             </dt>
-            <dd className="mt-1 text-3xl font-semibold text-gray-900">0</dd>
+            <dd className="mt-1 text-3xl font-semibold text-gray-900">
+              {bookingsLoading ? (
+                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+              ) : (
+                bookings.filter(b => b.bookingStatus === BookingStatus.CONFIRMED).length
+              )}
+            </dd>
           </div>
         </div>
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
             <dt className="text-sm font-medium text-gray-500 truncate">
-              Monthly Revenue
+              Pending Bookings
             </dt>
-            <dd className="mt-1 text-3xl font-semibold text-gray-900">₹0</dd>
+            <dd className="mt-1 text-3xl font-semibold text-gray-900">
+              {bookingsLoading ? (
+                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+              ) : (
+                bookings.filter(b => b.bookingStatus === BookingStatus.PENDING).length
+              )}
+            </dd>
           </div>
         </div>
       </div>

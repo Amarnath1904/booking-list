@@ -20,8 +20,18 @@ const UserSchema: Schema = new Schema(
       required: true,
       default: UserRole.AGENT 
     }
-  },
-  { timestamps: true }
+  },  { timestamps: true }
 );
 
-export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
+// Fix for Next.js hot reloading issue
+let UserModel: mongoose.Model<IUser>;
+
+try {
+  // Try to get the existing model to prevent OverwriteModelError
+  UserModel = mongoose.model<IUser>('User');
+} catch {
+  // If the model doesn't exist yet, create a new one
+  UserModel = mongoose.model<IUser>('User', UserSchema);
+}
+
+export default UserModel;

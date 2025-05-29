@@ -18,7 +18,6 @@ interface Category {
   name: string;
 }
 
-
 export default function AddRoomPage({ params }: { params: { id: string } }) {
   const { user } = useAuth();
   const router = useRouter();
@@ -51,6 +50,7 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
       parking: false
     }
   });
+
   // Load property data
   useEffect(() => {
     async function fetchPropertyDetails() {
@@ -139,6 +139,7 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
       });
     }
   };
+
   // Add a new category
   const handleAddCategory = async () => {
     if (newCategory.trim() && property) {
@@ -221,10 +222,13 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
         const uploadResult = await uploadResponse.json();
         imageUrls = uploadResult.imageUrls;
       }
-        // Convert amenities object to array
+      
+      // Convert amenities object to array
       const amenitiesArray = Object.entries(formData.amenities)
         .filter(([, enabled]) => enabled)
-        .map(([name]) => name);        // Create room data
+        .map(([name]) => name);
+      
+      // Create room data
       const roomData = {
         propertyId: property._id,
         pricingType: formData.pricingType,
@@ -292,17 +296,17 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
   if (error && !property) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-red-50 border border-red-200 rounded-md p-4 text-center">
+      <div className="max-w-3xl mx-auto px-4 py-6">
+        <div className="bg-red-100 border border-red-200 rounded p-4 text-center">
           <p className="text-red-700">{error}</p>
-          <Link href="/host-dashboard" className="mt-4 inline-block text-blue-600 hover:underline">
+          <Link href="/host-dashboard" className="mt-3 inline-block text-blue-600 hover:underline">
             Return to Dashboard
           </Link>
         </div>
@@ -315,32 +319,32 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-3xl mx-auto px-4 py-6">
       {success && (
-        <div className="mb-6 bg-green-50 border border-green-200 rounded-md p-4 text-center">
-          <p className="text-green-700">Room added successfully! Redirecting...</p>
+        <div className="mb-4 bg-green-100 border border-green-200 rounded p-4 text-center">
+          <p className="text-green-700 font-medium">Room added successfully! Redirecting...</p>
         </div>
       )}
       
-      <div className="mb-6">
-        <Link href={`/property/${property._id}`} className="text-blue-600 hover:underline">
+      <div className="mb-4">
+        <Link href={`/property/${property._id}`} className="text-blue-700 hover:underline font-medium">
           ← Back to {property.name}
         </Link>
       </div>
       
-      <div className="bg-white shadow-md rounded-lg p-6">
-        <h1 className="text-2xl font-semibold mb-2">Add New Room</h1>
-        <p className="text-gray-600 mb-6">Property: {property.name} - {property.location}</p>
+      <div className="bg-white border border-gray-200 rounded p-6 mb-4">
+        <h1 className="text-xl font-bold mb-1 text-black">Add New Room</h1>
+        <p className="text-gray-700 mb-4">Property: {property.name} - {property.location}</p>
         
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
-            <p className="text-red-700">{error}</p>
+          <div className="mb-4 bg-red-100 border border-red-200 rounded p-4">
+            <p className="text-red-800">{error}</p>
           </div>
         )}
         
         <form onSubmit={handleSubmit}>
           {/* Pricing Type */}
-          <div className="mb-6">
+          <div className="mb-4">
             <label className="block text-black font-medium mb-2">Pricing Type</label>
             <div className="flex gap-4">
               <label className="inline-flex items-center">
@@ -350,9 +354,9 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
                   value={PricingType.ROOM}
                   checked={formData.pricingType === PricingType.ROOM}
                   onChange={handleChange}
-                  className="form-radio h-5 w-5 text-blue-600"
+                  className="mr-2"
                 />
-                <span className="ml-2">Pricing per room</span>
+                <span className="text-gray-800">Pricing per room</span>
               </label>
               <label className="inline-flex items-center">
                 <input
@@ -361,14 +365,15 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
                   value={PricingType.PERSON}
                   checked={formData.pricingType === PricingType.PERSON}
                   onChange={handleChange}
-                  className="form-radio h-5 w-5 text-blue-600"
+                  className="mr-2"
                 />
-                <span className="ml-2">Pricing per person</span>
+                <span className="text-gray-800">Pricing per person</span>
               </label>
             </div>
-          </div>          
-          {/* Room Category - Show for all pricing types */}
-          <div className="mb-6">
+          </div>
+          
+          {/* Room Category */}
+          <div className="mb-4">
             <label className="block text-black font-medium mb-2">Room Category</label>
             {categories.length > 0 && (
               <div className="mb-2">
@@ -376,15 +381,15 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
                   name="roomCategory"
                   value={formData.roomCategory}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-2 py-1 border border-gray-300 rounded text-gray-800"
                 >
-                  <option value="">Select a category</option>
+                  <option value="" className="text-gray-800">Select a category</option>
                   {categories.map((category) => (
-                    <option key={category._id} value={category.name}>
+                    <option key={category._id} value={category.name} className="text-gray-800">
                       {category.name}
                     </option>
                   ))}
-                  <option value="new">+ Add new category</option>
+                  <option value="new" className="text-gray-800">+ Add new category</option>
                 </select>
               </div>
             )}
@@ -396,12 +401,12 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
                   placeholder="Enter new category name"
-                  className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-grow px-2 py-1 border border-gray-300 rounded text-gray-800 placeholder-gray-500"
                 />
                 <button
                   type="button"
                   onClick={handleAddCategory}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
                   Add
                 </button>
@@ -412,15 +417,15 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
               <button
                 type="button"
                 onClick={() => setShowNewCategoryInput(true)}
-                className="text-blue-600 hover:underline"
+                className="text-blue-700 hover:underline font-medium"
               >
                 + Add new category
               </button>
             )}
           </div>
           
-          {/* Rate per Room/Person - Show for all pricing types */}
-          <div className="mb-6">
+          {/* Rate per Room/Person */}
+          <div className="mb-4">
             <label htmlFor="ratePerRoom" className="block text-black font-medium mb-2">
               {formData.pricingType === PricingType.ROOM ? 'Rate per Room' : 'Rate per Person'}
             </label>
@@ -431,12 +436,12 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
               value={formData.ratePerRoom}
               onChange={handleChange}
               placeholder={formData.pricingType === PricingType.ROOM ? "Enter rate per room" : "Enter rate per person"}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1 border border-gray-300 rounded text-gray-800 placeholder-gray-500"
             />
           </div>
           
           {/* Room Capacity */}
-          <div className="mb-6">
+          <div className="mb-4">
             <label htmlFor="capacity" className="block text-black font-medium mb-2">
               Room Capacity
             </label>
@@ -445,10 +450,10 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
               name="capacity"
               value={formData.capacity}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1 border border-gray-300 rounded text-gray-800"
             >
               {Object.values(RoomCapacity).map((capacity) => (
-                <option key={capacity} value={capacity}>
+                <option key={capacity} value={capacity} className="text-gray-800">
                   {capacity}
                 </option>
               ))}
@@ -456,18 +461,18 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
           </div>
           
           {/* Amenities */}
-          <div className="mb-6">
+          <div className="mb-4">
             <label className="block text-black font-medium mb-2">Amenities</label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               <label className="inline-flex items-center">
                 <input
                   type="checkbox"
                   name="amenities.wifi"
                   checked={formData.amenities.wifi}
                   onChange={handleChange}
-                  className="form-checkbox h-5 w-5 text-blue-600"
+                  className="mr-2"
                 />
-                <span className="ml-2">WiFi</span>
+                <span className="text-gray-800">WiFi</span>
               </label>
               <label className="inline-flex items-center">
                 <input
@@ -475,9 +480,9 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
                   name="amenities.geyser"
                   checked={formData.amenities.geyser}
                   onChange={handleChange}
-                  className="form-checkbox h-5 w-5 text-blue-600"
+                  className="mr-2"
                 />
-                <span className="ml-2">Geyser</span>
+                <span className="text-gray-800">Geyser</span>
               </label>
               <label className="inline-flex items-center">
                 <input
@@ -485,9 +490,9 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
                   name="amenities.ac"
                   checked={formData.amenities.ac}
                   onChange={handleChange}
-                  className="form-checkbox h-5 w-5 text-blue-600"
+                  className="mr-2"
                 />
-                <span className="ml-2">AC</span>
+                <span className="text-gray-800">AC</span>
               </label>
               <label className="inline-flex items-center">
                 <input
@@ -495,9 +500,9 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
                   name="amenities.tv"
                   checked={formData.amenities.tv}
                   onChange={handleChange}
-                  className="form-checkbox h-5 w-5 text-blue-600"
+                  className="mr-2"
                 />
-                <span className="ml-2">TV</span>
+                <span className="text-gray-800">TV</span>
               </label>
               <label className="inline-flex items-center">
                 <input
@@ -505,9 +510,9 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
                   name="amenities.breakfast"
                   checked={formData.amenities.breakfast}
                   onChange={handleChange}
-                  className="form-checkbox h-5 w-5 text-blue-600"
+                  className="mr-2"
                 />
-                <span className="ml-2">Breakfast</span>
+                <span className="text-gray-800">Breakfast</span>
               </label>
               <label className="inline-flex items-center">
                 <input
@@ -515,17 +520,17 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
                   name="amenities.parking"
                   checked={formData.amenities.parking}
                   onChange={handleChange}
-                  className="form-checkbox h-5 w-5 text-blue-600"
+                  className="mr-2"
                 />
-                <span className="ml-2">Parking</span>
+                <span className="text-gray-800">Parking</span>
               </label>
             </div>
           </div>
           
           {/* Extra Person Charge */}
-          <div className="mb-6">
+          <div className="mb-4">
             <label htmlFor="extraPersonCharge" className="block text-black font-medium mb-2">
-              Extra Person Charge (optional)
+              Extra Person Charge <span className="text-gray-800 font-normal">(optional)</span>
             </label>
             <input
               type="number"
@@ -534,14 +539,14 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
               value={formData.extraPersonCharge}
               onChange={handleChange}
               placeholder="Enter extra person charge"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1 border border-gray-300 rounded text-gray-800 placeholder-gray-500"
             />
           </div>
           
           {/* Agent Commission */}
-          <div className="mb-6">
+          <div className="mb-4">
             <label htmlFor="agentCommission" className="block text-black font-medium mb-2">
-              Agent Commission (optional)
+              Agent Commission <span className="text-gray-800 font-normal">(optional)</span>
             </label>
             <input
               type="number"
@@ -550,14 +555,14 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
               value={formData.agentCommission}
               onChange={handleChange}
               placeholder="Enter agent commission"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1 border border-gray-300 rounded text-gray-800 placeholder-gray-500"
             />
           </div>
           
           {/* Advance Amount */}
-          <div className="mb-6">
+          <div className="mb-4">
             <label htmlFor="advanceAmount" className="block text-black font-medium mb-2">
-              Advance Amount (optional)
+              Advance Amount <span className="text-gray-800 font-normal">(optional)</span>
             </label>
             <input
               type="number"
@@ -566,54 +571,83 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
               value={formData.advanceAmount}
               onChange={handleChange}
               placeholder="Enter advance amount"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1 border border-gray-300 rounded text-gray-800 placeholder-gray-500"
             />
           </div>
           
           {/* Photo Upload */}
-          <div className="mb-6">
-            <label className="block text-gray-700 font-medium mb-2">Room Photos</label>
-            <div className="border-dashed border-2 border-gray-300 p-6 rounded-md">
+          <div className="mb-4">
+            <label className="block text-black font-medium mb-2">Room Photos</label>
+            <div className="border-2 border-dashed border-gray-300 p-6 rounded text-center bg-gray-50">
               <input
                 type="file"
                 accept="image/*"
                 multiple
                 onChange={handleFileChange}
                 className="hidden"
-                id="photo-upload"
+                id="room-photos"
               />
-              <label
-                htmlFor="photo-upload"
-                className="cursor-pointer flex flex-col items-center justify-center text-gray-500"
-              >
-                <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                </svg>
-                <span>Click to upload photos</span>
-                <span className="text-sm text-gray-400 mt-1">You can select multiple files</span>
+              <label htmlFor="room-photos" className="cursor-pointer">
+                <div className="flex flex-col items-center">
+                  <svg className="w-12 h-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                  </svg>
+                  <p className="text-gray-800 font-medium mb-1">Click to upload room photos</p>
+                  <p className="text-gray-600 text-sm">or drag and drop files here</p>
+                  <p className="text-gray-500 text-xs mt-2">Supported formats: JPG, PNG</p>
+                </div>
               </label>
             </div>
             
             {/* Photo Previews */}
             {previewUrls.length > 0 && (
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">                {previewUrls.map((url, index) => (
-                  <div key={index} className="relative">
-                    <Image 
-                      src={url} 
-                      alt={`Preview ${index + 1}`} 
-                      className="h-24 w-full object-cover rounded-md"
-                      width={120}
-                      height={96} 
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeFile(index)}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 w-6 h-6 flex items-center justify-center"
+              <div className="mt-4">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-black font-medium">Uploaded Photos ({previewUrls.length})</h3>
+                  {previewUrls.length > 1 && (
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        previewUrls.forEach(url => URL.revokeObjectURL(url));
+                        setPreviewUrls([]);
+                        setSelectedFiles([]);
+                      }}
+                      className="text-red-600 text-sm hover:underline font-medium"
                     >
-                      ×
+                      Remove All
                     </button>
-                  </div>
-                ))}
+                  )}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {previewUrls.map((url, index) => (
+                    <div key={index} className="relative group">
+                      <div className="border border-gray-200 rounded overflow-hidden bg-white shadow-sm">
+                        <div className="aspect-square relative">
+                          <Image
+                            src={url} 
+                            alt={`Room preview ${index + 1}`} 
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
+                          />
+                        </div>
+                        <div className="p-1 text-xs text-gray-500 truncate border-t border-gray-100 bg-gray-50">
+                          Photo {index + 1}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(index)}
+                        className="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full p-1 w-6 h-6 flex items-center justify-center text-xs hover:bg-opacity-70 transition-opacity"
+                        aria-label="Remove photo"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -623,7 +657,7 @@ export default function AddRoomPage({ params }: { params: { id: string } }) {
             <button
               type="submit"
               disabled={submitting}
-              className={`px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${
                 submitting ? 'opacity-70 cursor-not-allowed' : ''
               }`}
             >

@@ -81,6 +81,47 @@ export async function getAuth(request?: NextRequest) {
 }
 
 /**
+ * Generates a unique code with a given prefix and length
+ * @param prefix The prefix for the code (e.g., 'BOOK')
+ * @param length The total length of the code including prefix
+ * @returns A unique code string
+ */
+export async function generateUniqueCode(prefix: string, length: number): Promise<string> {
+  // Make sure the length is at least longer than the prefix
+  if (length <= prefix.length) {
+    length = prefix.length + 4; // Ensure at least 4 random characters
+  }
+  
+  // Number of random characters needed
+  const randomLength = length - prefix.length;
+  
+  // Try up to 10 times to generate a unique code
+  for (let attempts = 0; attempts < 10; attempts++) {
+    // Generate random alphanumeric string
+    let randomPart = '';
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    
+    for (let i = 0; i < randomLength; i++) {
+      randomPart += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    
+    const code = `${prefix}${randomPart}`;
+    
+    // Check if this code already exists in the database
+    // This assumes we're using this for booking codes, but could be adapted for other uses
+    const existingBooking = await mongoose.models.Booking?.findOne({ bookingCode: code });
+    
+    if (!existingBooking) {
+      return code;
+    }
+  }
+  
+  // If we couldn't generate a unique code after multiple attempts, add timestamp
+  const timestamp = Date.now().toString().slice(-6);
+  return `${prefix}${timestamp}`;
+}
+
+/**
  * Verifies the MongoDB connection is working properly
  * @returns Object with connection status and details
  */

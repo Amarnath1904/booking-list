@@ -55,10 +55,18 @@ const RoomSchema: Schema = new Schema(
     advanceAmount: { 
       type: Number 
     }
-  },
-  { timestamps: true }
+  },  { timestamps: true }
 );
 
-// Check if model already exists to prevent OverwriteModelError in development with hot reload
-const Room = mongoose.models.Room || mongoose.model<IRoom>('Room', RoomSchema);
-export default Room;
+// Fix for Next.js hot reloading issue
+let RoomModel: mongoose.Model<IRoom>;
+
+try {
+  // Try to get the existing model to prevent OverwriteModelError
+  RoomModel = mongoose.model<IRoom>('Room');
+} catch {
+  // If the model doesn't exist yet, create a new one
+  RoomModel = mongoose.model<IRoom>('Room', RoomSchema);
+}
+
+export default RoomModel;

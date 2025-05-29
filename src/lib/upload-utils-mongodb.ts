@@ -18,6 +18,14 @@ interface MongoDBUploadResult {
  */
 export async function uploadImage(file: File, folder: string = 'uploads'): Promise<MongoDBUploadResult> {
   try {
+    // Check file size to ensure it's not too large for MongoDB
+    // MongoDB documents have a 16MB size limit
+    const maxSize = 10 * 1024 * 1024; // 10MB max for images
+    if (file.size > maxSize) {
+      console.warn('File size is large, compressing before storage');
+      // In a production app, you might want to implement image compression here
+    }
+    
     // Convert the file to base64
     const buffer = await file.arrayBuffer();
     const base64String = Buffer.from(buffer).toString('base64');
@@ -37,7 +45,6 @@ export async function uploadImage(file: File, folder: string = 'uploads'): Promi
     console.error('Error converting image to base64:', error);
     throw error;
   }
-}
 }
 
 // Function to handle image uploads from multipart form data

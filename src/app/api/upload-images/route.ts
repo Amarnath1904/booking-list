@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { getAuth } from '@/lib/db-utils';
-import { handleImageUpload } from '@/lib/upload-utils';
+import { handleImageUpload } from '@/lib/upload-utils-mongodb';
 
 export async function POST(request: NextRequest) {
   try {

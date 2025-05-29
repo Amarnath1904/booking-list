@@ -30,6 +30,15 @@ const RoomCategorySchema: Schema = new Schema(
 // Add a compound index to ensure unique categories per property
 RoomCategorySchema.index({ propertyId: 1, name: 1 }, { unique: true });
 
-// Check if model already exists to prevent OverwriteModelError in development with hot reload
-const RoomCategory = mongoose.models.RoomCategory || mongoose.model<IRoomCategory>('RoomCategory', RoomCategorySchema);
-export default RoomCategory;
+// Fix for Next.js hot reloading issue
+let RoomCategoryModel: mongoose.Model<IRoomCategory>;
+
+try {
+  // Try to get the existing model to prevent OverwriteModelError
+  RoomCategoryModel = mongoose.model<IRoomCategory>('RoomCategory');
+} catch {
+  // If the model doesn't exist yet, create a new one
+  RoomCategoryModel = mongoose.model<IRoomCategory>('RoomCategory', RoomCategorySchema);
+}
+
+export default RoomCategoryModel;

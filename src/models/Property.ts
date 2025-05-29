@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IProperty extends Document {
   hostId: string; // Firebase UID of the host
@@ -27,6 +27,15 @@ const PropertySchema: Schema = new Schema(
   { timestamps: true }
 );
 
-// Check if model already exists to prevent OverwriteModelError in development with hot reload
-const Property = mongoose.models.Property || mongoose.model<IProperty>('Property', PropertySchema);
-export default Property;
+// Fix for Next.js hot reloading issue
+let PropertyModel: Model<IProperty>;
+
+try {
+  // Try to get the existing model to prevent OverwriteModelError
+  PropertyModel = mongoose.model<IProperty>('Property');
+} catch {
+  // If the model doesn't exist yet, create a new one
+  PropertyModel = mongoose.model<IProperty>('Property', PropertySchema);
+}
+
+export default PropertyModel;
