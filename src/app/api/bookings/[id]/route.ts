@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Booking, { BookingStatus } from '@/models/Booking';
 import mongoose from 'mongoose';
-import { getTokenFromRequest } from '@/app/utils/server-auth';
+import { getTokenFromRequest } from '@/app/utils/server-auth'; // Ensure this path is correct and points to the server-side utilities
 import { auth } from '@/firebase/config';
 
 interface RouteParams {
@@ -52,7 +52,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     const { id } = params;
     
     // Validate token for host authentication
-    const token = await getTokenFromRequest(req);
+    const token = await getTokenFromRequest(req); // This should now use the function from server-auth.ts
     if (!token) {
       return NextResponse.json(
         { error: 'Authentication required' },
