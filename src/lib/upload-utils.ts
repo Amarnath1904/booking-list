@@ -21,9 +21,9 @@ export async function handleImageUpload(request: NextRequest): Promise<string[]>
 }
 
 // Extract form data fields excluding files
-export async function extractFormFields(request: NextRequest): Promise<Record<string, any>> {
+export async function extractFormFields(request: NextRequest): Promise<Record<string, string | string[]>> {
   const formData = await request.formData();
-  const fields: Record<string, any> = {};
+  const fields: Record<string, string | string[]> = {};
   
   for (const [key, value] of formData.entries()) {
     if (!(value instanceof File)) {
@@ -33,9 +33,12 @@ export async function extractFormFields(request: NextRequest): Promise<Record<st
         if (!fields[baseKey]) {
           fields[baseKey] = [];
         }
-        fields[baseKey].push(value);
+        // Ensure fields[baseKey] is an array before pushing
+        if (Array.isArray(fields[baseKey])) {
+          (fields[baseKey] as string[]).push(value as string);
+        }
       } else {
-        fields[key] = value;
+        fields[key] = value as string;
       }
     }
   }

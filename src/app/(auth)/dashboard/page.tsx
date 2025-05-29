@@ -141,7 +141,7 @@ export default function Dashboard() {
                   }}
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
                 >
-                  I'm an Agent
+                  I&apos;m an Agent
                 </button>
                 <button 
                   onClick={async () => {
@@ -167,12 +167,12 @@ export default function Dashboard() {
                   }}
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors"
                 >
-                  I'm a Host
+                  I&apos;m a Host
                 </button>
               </div>
             </div>
             <p className="text-gray-600 mb-4">
-              After selecting your role, you'll be redirected to the appropriate dashboard for your needs.
+              After selecting your role, you&apos;ll be redirected to the appropriate dashboard for your needs.
             </p>
             
             <button

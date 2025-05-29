@@ -10,7 +10,6 @@ export default function ProfilePage() {
   const [displayName, setDisplayName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
-  const [dbStatus, setDbStatus] = useState({ success: false, message: 'Checking connection...' });
 
   useEffect(() => {
     if (user?.displayName) {
@@ -21,13 +20,9 @@ export default function ProfilePage() {
     async function checkDbStatus() {
       try {
         const response = await fetch('/api/db-status');
-        const data = await response.json();
-        setDbStatus(data);
-      } catch (error) {
-        setDbStatus({ 
-          success: false, 
-          message: 'Failed to check database connection'
-        });
+        await response.json(); // data is unused
+      } catch (error) { // error is used in console.error
+        console.error('Failed to check database connection', error);
       }
     }
     

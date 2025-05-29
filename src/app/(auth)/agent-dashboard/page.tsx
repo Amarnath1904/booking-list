@@ -1,6 +1,5 @@
 'use client';
 
-import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/constants/userRoles';
 import { useRouteProtection } from '@/app/utils/auth-helpers';
 import { useState } from 'react';
@@ -39,8 +38,7 @@ const MOCK_BOOKINGS = [
 export default function AgentDashboard() {
   // Protect this route - only agents can access
   const isLoading = useRouteProtection(UserRole.AGENT);
-  const { user } = useAuth();
-  const [bookings, setBookings] = useState(MOCK_BOOKINGS);
+  const [bookings] = useState(MOCK_BOOKINGS);
   const [activeTab, setActiveTab] = useState('upcoming');
 
   if (isLoading) {
@@ -78,7 +76,7 @@ export default function AgentDashboard() {
         </div>
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
-            <dt className="text-sm font-medium text-gray-500 truncate">Today's Check-ins</dt>
+            <dt className="text-sm font-medium text-gray-500 truncate">Today&apos;s Check-ins</dt>
             <dd className="mt-1 text-3xl font-semibold text-gray-900">0</dd>
           </div>
         </div>

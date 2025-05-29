@@ -33,7 +33,7 @@ if (typeof window !== 'undefined') {
   import('firebase/auth').then((firebaseAuth) => {
     if (firebaseAuth.setPersistence && firebaseAuth.browserLocalPersistence) {
       firebaseAuth.setPersistence(auth, firebaseAuth.browserLocalPersistence)
-        .catch((error: any) => {
+        .catch((error: Error) => { // Changed any to Error
           console.error('Auth persistence error:', error);
         });
     }
