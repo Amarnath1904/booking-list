@@ -13,13 +13,7 @@ interface Property {
   images?: string[];
 }
 
-interface AddPropertyImagesPageProps {
-  params: {
-    id: string;
-  };
-}
-
-export default function AddPropertyImagesPage({ params }: AddPropertyImagesPageProps) {
+export default function AddPropertyImagesPage({ params }: { params: { id: string } }) {
   const { user } = useAuth();
   const router = useRouter();
   const [property, setProperty] = useState<Property | null>(null);
