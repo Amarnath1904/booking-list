@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import { DateRange, RangeKeyDict } from 'react-date-range';
 import 'react-date-range/dist/styles.css';
@@ -59,9 +59,24 @@ type ValidationErrorType = {
   [key: string]: string | undefined;
 };
 
+interface BookingAttemptData {
+  propertyId: string;
+  roomId: string;
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string;
+  guestAddress: string;
+  checkInDate: string | undefined;
+  checkOutDate: string | undefined;
+  nights: number;
+  baseAmount: number;
+  totalAmount: number;
+  status: string;
+  // paymentScreenshotUrl will be added later before final submission
+}
+
 export default function GuestBookingPage() {
   const params = useParams();
-  const router = useRouter();
   const propertyId = params.id as string;
   
   const [property, setProperty] = useState<Property | null>(null);
@@ -69,7 +84,6 @@ export default function GuestBookingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState(1); // 1: Room selection, 2: Guest info, 3: Payment, 4: Confirmation
-  const [isMobile, setIsMobile] = useState(false);
   
   // DateRange component responsiveness
   const [datePickerMonths, setDatePickerMonths] = useState(2);
@@ -81,7 +95,7 @@ export default function GuestBookingPage() {
     if (typeof window !== 'undefined') {
       const handleResize = () => {
         const mobile = window.innerWidth < 768;
-        setIsMobile(mobile);
+        // setIsMobile(mobile); // Directly use mobile here if needed, or remove if isMobile state is not used elsewhere
         setDatePickerMonths(mobile ? 1 : 2);
         setDatePickerDirection(mobile ? 'vertical' : 'horizontal');
       };
@@ -108,6 +122,9 @@ export default function GuestBookingPage() {
     endDate: new Date(),
     key: 'selection'
   });
+
+  // Store all form data including room, dates, and guest info
+  const [bookingAttemptData, setBookingAttemptData] = useState<BookingAttemptData | null>(null);
 
   const [formData, setFormData] = useState<BookingFormData>({
     guestName: '',
@@ -324,114 +341,125 @@ export default function GuestBookingPage() {
         return;
       }
       
-      // Create the booking
-      try {
-        const selectedRoom = rooms.find(room => room._id === formData.selectedRoomId);
-        if (!selectedRoom) {
-          throw new Error('Selected room not found');
-        }
-        
-        // Calculate number of nights
-        const checkInDate = formData.checkInDate as Date;
-        const checkOutDate = formData.checkOutDate as Date;
-        const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        // Calculate total amount
-        const baseAmount = selectedRoom.ratePerRoom ? selectedRoom.ratePerRoom * nights : 0;
-        const totalAmount = baseAmount; // Add any additional charges here
-        
-        const bookingData = {
-          propertyId,
-          roomId: formData.selectedRoomId,
-          guestName: formData.guestName,
-          guestEmail: formData.guestEmail,
-          guestPhone: formData.guestPhone,
-          guestAddress: formData.guestAddress,
-          checkInDate: formData.checkInDate?.toISOString(),
-          checkOutDate: formData.checkOutDate?.toISOString(),
-          nights,
-          baseAmount,
-          totalAmount,
-          status: 'pending'
-        };
-        
-        const response = await fetch('/api/bookings', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(bookingData)
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to create booking: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        setBookingId(result._id);
-        
-        // Move to next step
-        setStep(3);
-      } catch (err) {
-        console.error('Error creating booking:', err);
-        alert('Failed to create booking. Please try again.');
+      // Store current form data and move to payment step
+      // Booking will be created after payment screenshot is uploaded
+      const selectedRoom = rooms.find(room => room._id === formData.selectedRoomId);
+      if (!selectedRoom) {
+        // This should ideally not happen if validation passed in step 1
+        alert('Selected room not found. Please go back and select a room.');
+        return;
       }
+
+      const checkInDate = formData.checkInDate as Date;
+      const checkOutDate = formData.checkOutDate as Date;
+      const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
+      const baseAmount = selectedRoom.ratePerRoom ? selectedRoom.ratePerRoom * nights : 0;
+      const totalAmount = baseAmount; // Add any additional charges here
+
+      setBookingAttemptData({
+        propertyId,
+        roomId: formData.selectedRoomId,
+        guestName: formData.guestName,
+        guestEmail: formData.guestEmail,
+        guestPhone: formData.guestPhone,
+        guestAddress: formData.guestAddress,
+        checkInDate: formData.checkInDate?.toISOString(),
+        checkOutDate: formData.checkOutDate?.toISOString(),
+        nights,
+        baseAmount,
+        totalAmount,
+        status: 'pending' // Initial status
+      });
+
+      setValidationErrors({});
+      setStep(3); // Move to payment step
+    }
+  };
+
+  const processPaymentAndBooking = async (screenshotFile: File) => {
+    setPaymentUploading(true);
+    setFileUploadStatus('idle');
+    setFileUploadMessage(null);
+
+    try {
+      // Step 1: Upload payment screenshot
+      const screenshotFormData = new FormData();
+      screenshotFormData.append('screenshot', screenshotFile);
+      // Assuming /api/upload-payment now accepts only the screenshot
+      // and returns { paymentScreenshotUrl: '...' }
+      const uploadResponse = await fetch('/api/upload-payment', {
+        method: 'POST',
+        body: screenshotFormData,
+      });
+
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json().catch(() => ({ message: 'Failed to upload payment screenshot.' }));
+        throw new Error(errorData.message || `Failed to upload payment: ${uploadResponse.status}`);
+      }
+
+      const uploadResult = await uploadResponse.json();
+      const paymentScreenshotUrl = uploadResult.paymentScreenshotUrl;
+
+      if (!paymentScreenshotUrl) {
+        throw new Error('Payment screenshot URL not returned from upload.');
+      }
+
+      // Step 2: Create booking with all data including paymentScreenshotUrl
+      if (!bookingAttemptData) {
+        throw new Error('Booking data not found. Please start over.');
+      }
+
+      const finalBookingData = {
+        ...bookingAttemptData,
+        paymentScreenshotUrl: paymentScreenshotUrl,
+      };
+
+      const bookingResponse = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(finalBookingData),
+      });
+
+      if (!bookingResponse.ok) {
+        const errorData = await bookingResponse.json().catch(() => ({ message: 'Failed to create booking.' }));
+        throw new Error(errorData.message || `Failed to create booking: ${bookingResponse.status}`);
+      }
+
+      const bookingResult = await bookingResponse.json();
+      setBookingId(bookingResult._id);
+
+      setFileUploadStatus('success');
+      setFileUploadMessage('Payment proof uploaded and booking confirmed!');
+
+      setTimeout(() => {
+        setStep(4);
+      }, 1500); // Slightly longer delay to read confirmation
+
+    } catch (err) {
+      console.error('Error in payment and booking process:', err);
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.';
+      setFileUploadStatus('error');
+      setFileUploadMessage(errorMessage);
+    } finally {
+      setPaymentUploading(false);
     }
   };
 
   const handlePaymentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!bookingId) {
-      setFileUploadStatus('error');
-      setFileUploadMessage('Booking ID not found. Please try again.');
-      return;
-    }
-    
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    
+
     const screenshot = files[0];
-    
-    // Validate file
     const validation = validatePaymentFile(screenshot);
     if (!validation.valid) {
       setFileUploadStatus('error');
       setFileUploadMessage(validation.message || 'Invalid file');
       return;
     }
-    
-    setPaymentUploading(true);
-    setFileUploadStatus('idle');
-    setFileUploadMessage(null);
-    
-    try {
-      const formData = new FormData();
-      formData.append('bookingId', bookingId);
-      formData.append('screenshot', screenshot);
-      
-      const response = await fetch('/api/upload-payment', {
-        method: 'POST',
-        body: formData
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to upload payment: ${response.status}`);
-      }
-      
-      // Success feedback
-      setFileUploadStatus('success');
-      setFileUploadMessage('Payment proof uploaded successfully!');
-      
-      // Move to confirmation step after a short delay to show success message
-      setTimeout(() => {
-        setStep(4);
-      }, 1000);
-    } catch (err) {
-      console.error('Error uploading payment screenshot:', err);
-      setFileUploadStatus('error');
-      setFileUploadMessage('Failed to upload payment screenshot. Please try again.');
-    } finally {
-      setPaymentUploading(false);
-    }
+
+    await processPaymentAndBooking(screenshot);
   };
 
   // Handle drag and drop file upload
@@ -451,59 +479,19 @@ export default function GuestBookingPage() {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    
-    if (!bookingId) {
-      setFileUploadStatus('error');
-      setFileUploadMessage('Booking ID not found. Please try again.');
-      return;
-    }
-    
+
     const droppedFiles = e.dataTransfer.files;
     if (!droppedFiles || droppedFiles.length === 0) return;
-    
+
     const screenshot = droppedFiles[0];
-    
-    // Validate file
     const validation = validatePaymentFile(screenshot);
     if (!validation.valid) {
       setFileUploadStatus('error');
       setFileUploadMessage(validation.message || 'Invalid file');
       return;
     }
-    
-    setPaymentUploading(true);
-    setFileUploadStatus('idle');
-    setFileUploadMessage(null);
-    
-    const formData = new FormData();
-    formData.append('bookingId', bookingId);
-    formData.append('screenshot', screenshot);
-    
-    try {
-      const response = await fetch('/api/upload-payment', {
-        method: 'POST',
-        body: formData
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to upload payment: ${response.status}`);
-      }
-      
-      // Success feedback
-      setFileUploadStatus('success');
-      setFileUploadMessage('Payment proof uploaded successfully!');
-      
-      // Move to confirmation step after a short delay to show success message
-      setTimeout(() => {
-        setStep(4);
-      }, 1000);
-    } catch (err) {
-      console.error('Error uploading payment screenshot:', err);
-      setFileUploadStatus('error');
-      setFileUploadMessage('Failed to upload payment screenshot. Please try again.');
-    } finally {
-      setPaymentUploading(false);
-    }
+
+    await processPaymentAndBooking(screenshot);
   };
 
   // CSS transition style for step animations
@@ -736,7 +724,6 @@ export default function GuestBookingPage() {
                         showDateDisplay={true}
                         preventSnapRefocus={true}
                         showPreview={true}
-                        showSelectionPreview={true}
                         monthDisplayFormat="MMMM yyyy"
                         weekdayDisplayFormat="E"
                         dayDisplayFormat="d"
@@ -819,14 +806,14 @@ export default function GuestBookingPage() {
                         <>
                           <p className="text-gray-600 flex items-center">
                             <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2h2" />
                             </svg>
                             <span className="font-medium text-gray-700">Check-in:</span> 
                             <span className="ml-1">{formData.checkInDate.toLocaleDateString()}</span>
                           </p>
                           <p className="text-gray-600 flex items-center mt-2">
                             <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2h2" />
                             </svg>
                             <span className="font-medium text-gray-700">Check-out:</span> 
                             <span className="ml-1">{formData.checkOutDate.toLocaleDateString()}</span>
@@ -1054,7 +1041,7 @@ export default function GuestBookingPage() {
                         </div>
                         <div className="flex items-center">
                           <svg className="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3h2a3 3 0 013 3v2a3 3 0 01-3 3H6a3 3 0 01-3-3v-2a3 3 0 013-3h2" />
                           </svg>
                           <p className="text-sm text-gray-600">
                             <span className="font-medium text-gray-700">UPI ID:</span>
@@ -1085,6 +1072,280 @@ export default function GuestBookingPage() {
                           <div className="flex items-center justify-between sm:block">
                             <span className="text-gray-600">Room:</span>
                             <span className="font-medium text-gray-800">{rooms.find(r => r._id === formData.selectedRoomId)?.roomCategory || 'Standard Room'}</span>
+                          </div>
+                          {formData.checkInDate && formData.checkOutDate && (
+                            <>
+                              <div className="flex items-center justify-between sm:block">
+                                <span className="text-gray-600">Check-in:</span>
+                                <span className="font-medium text-gray-800">{formData.checkInDate.toLocaleDateString()}</span>
+                              </div>
+                              <div className="flex items-center justify-between sm:block">
+                                <span className="text-gray-600">Check-out:</span>
+                                <span className="font-medium text-gray-800">{formData.checkOutDate.toLocaleDateString()}</span>
+                              </div>
+                              <div className="flex items-center justify-between sm:block">
+                                <span className="text-gray-600">Duration:</span>
+                                <span className="font-medium text-gray-800">
+                                  {Math.ceil((formData.checkOutDate.getTime() - formData.checkInDate.getTime()) / (1000 * 60 * 60 * 24))} nights
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        
+                        <div className="mt-5 pt-4 border-t border-gray-200 flex items-center justify-between">
+                          <span className="text-gray-700 font-medium">Total Amount:</span>
+                          <span className="text-xl font-bold text-blue-700">
+                            ₹{
+                              formData.checkInDate && formData.checkOutDate && rooms.find(r => r._id === formData.selectedRoomId)?.ratePerRoom
+                                ? (rooms.find(r => r._id === formData.selectedRoomId)?.ratePerRoom || 0) * 
+                                  Math.ceil((formData.checkOutDate.getTime() - formData.checkInDate.getTime()) / (1000 * 60 * 60 * 24))
+                                : 0
+                            }
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); handleNextStep(); }}>
+                  <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                    <div className="sm:col-span-3">
+                      <label htmlFor="guestName" className="block text-sm font-medium text-gray-700">
+                        Full Name <span className="text-red-500">*</span>
+                      </label>
+                      <div className="mt-1 relative rounded-md shadow-sm">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </div>
+                        <input
+                          type="text"
+                          name="guestName"
+                          id="guestName"
+                          value={formData.guestName}
+                          onChange={handleInputChange}
+                          placeholder="John Doe"
+                          className={`pl-10 block w-full border ${validationErrors.guestName ? 'border-red-300 focus:ring-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'} rounded-lg shadow-sm py-3 px-4 placeholder-gray-400 text-black focus:outline-none sm:text-sm transition duration-150 ease-in-out`}
+                          required
+                        />
+                        {validationErrors.guestName && (
+                          <p className="mt-1 text-xs text-red-600 flex items-center">
+                            <svg className="h-3 w-3 mr-1 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            {validationErrors.guestName}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <label htmlFor="guestPhone" className="block text-sm font-medium text-gray-700">
+                        Phone Number <span className="text-red-500">*</span>
+                      </label>
+                      <div className="mt-1 relative rounded-md shadow-sm">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                          </svg>
+                        </div>
+                        <input
+                          type="tel"
+                          name="guestPhone"
+                          id="guestPhone"
+                          value={formData.guestPhone}
+                          onChange={handleInputChange}
+                          placeholder="+91 9876543210"
+                          className={`pl-10 block w-full border ${validationErrors.guestPhone ? 'border-red-300 focus:ring-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'} rounded-lg shadow-sm py-3 px-4 placeholder-gray-400 text-black focus:outline-none sm:text-sm transition duration-150 ease-in-out`}
+                          required
+                        />
+                        {validationErrors.guestPhone && (
+                          <p className="mt-1 text-xs text-red-600 flex items-center">
+                            <svg className="h-3 w-3 mr-1 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            {validationErrors.guestPhone}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-6">
+                      <label htmlFor="guestEmail" className="block text-sm font-medium text-gray-700">
+                        Email Address <span className="text-red-500">*</span>
+                      </label>
+                      <div className="mt-1 relative rounded-md shadow-sm">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <input
+                          type="email"
+                          name="guestEmail"
+                          id="guestEmail"
+                          value={formData.guestEmail}
+                          onChange={handleInputChange}
+                          placeholder="john.doe@example.com"
+                          className={`pl-10 block w-full border ${validationErrors.guestEmail ? 'border-red-300 focus:ring-red-500 focus:border-red-500 bg-red-50' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'} rounded-lg shadow-sm py-3 px-4 placeholder-gray-400 text-black focus:outline-none sm:text-sm transition duration-150 ease-in-out`}
+                          required
+                        />
+                        {validationErrors.guestEmail && (
+                          <p className="mt-1 text-xs text-red-600 flex items-center">
+                            <svg className="h-3 w-3 mr-1 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            {validationErrors.guestEmail}
+                          </p>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500">We&apos;ll send your booking confirmation to this email</p>
+                    </div>
+
+                    <div className="sm:col-span-6">
+                      <label htmlFor="guestAddress" className="block text-sm font-medium text-gray-700">
+                        Address <span className="text-red-500">*</span>
+                      </label>
+                      <div className="mt-1 relative rounded-md shadow-sm">
+                        <div className="absolute top-3 left-0 pl-3 flex items-start pointer-events-none">
+                          <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </div>
+                        <textarea
+                          name="guestAddress"
+                          id="guestAddress"
+                          value={formData.guestAddress}
+                          onChange={handleInputChange}
+                          rows={3}
+                          placeholder="Enter your full address"
+                                                   className={`pl-10 block w-full border ${validationErrors.guestAddress ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'} rounded-lg shadow-sm py-3 px-4 placeholder-gray-400 text-black focus:outline-none sm:text-sm transition duration-150 ease-in-out`}
+                          required
+                        />
+                        {validationErrors.guestAddress && (
+                          <p className="mt-1 text-xs text-red-600">{validationErrors.guestAddress}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 flex items-center justify-between flex-wrap gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-300"
+                    >
+                      <svg className="mr-2 -ml-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                      Back
+                    </button>
+                    <button
+                      type="submit"
+                      className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-300"
+                    >
+                      Proceed to Payment
+                      <svg className="ml-2 -mr-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Payment */}
+          {step === 3 && (
+            <div 
+              className="bg-white shadow-md rounded-xl overflow-hidden mb-6 transition-all duration-300 hover:shadow-lg"
+              style={getStepTransitionStyle(step, 3)}
+            >
+              <div className="px-4 py-5 sm:px-6 border-b border-gray-200 bg-gray-50">
+                <h2 className="text-xl font-semibold text-gray-900">Payment Information</h2>
+                <p className="mt-1 text-sm text-gray-500">Complete your booking with payment</p>
+              </div>
+              <div className="px-4 py-6 sm:p-6">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg mb-6 border border-blue-100 shadow-sm">
+                  <h3 className="text-md font-medium text-gray-900 mb-3 flex items-center">
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Payment Instructions
+                  </h3>
+                  <ol className="list-decimal list-inside text-sm text-gray-700 space-y-3 pl-1">
+                    <li className="flex items-start">
+                      <span className="mr-2">1.</span>
+                      <span>Make payment via UPI to the ID shown below.</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="mr-2">2.</span>
+                      <span>Take a screenshot of the payment confirmation.</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="mr-2">3.</span>
+                      <span>Upload the screenshot below to verify your payment.</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="mr-2">4.</span>
+                      <span>Your booking will be confirmed after verification.</span>
+                    </li>
+                  </ol>
+                </div>
+
+                <div className="mb-8">
+                  <h3 className="text-md font-medium text-gray-900 mb-3">Payment Details</h3>
+                  <div className="border rounded-lg p-5 bg-white shadow-sm">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-center">
+                      <div className="mb-4 md:mb-0">
+                        <div className="flex items-center mb-3">
+                          <svg className="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium text-gray-700">Account Name:</span>
+                            <span className="ml-1 font-mono text-gray-900">{property.bankAccountName}</span>
+                          </p>
+                        </div>
+                        <div className="flex items-center">
+                          <svg className="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3h2a3 3 0 013 3v2a3 3 0 01-3 3H6a3 3 0 01-3-3v-2a3 3 0 003-3h2" />
+                          </svg>
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium text-gray-700">UPI ID:</span>
+                            <span className="ml-1 font-mono text-gray-900">{property.upiId}</span>
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 flex flex-col items-center justify-center">
+                        <div className="font-medium text-sm text-blue-800 mb-1">Scan to Pay</div>
+                        <div className="w-32 h-32 bg-white p-2 rounded-lg flex items-center justify-center border border-gray-200">
+                          <div className="text-center text-xs text-gray-500">
+                            <svg className="w-16 h-16 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                            </svg>
+                            UPI QR Code
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Selected room information */}
+                    {formData.selectedRoomId && (
+                      <div className="mt-6 pt-5 border-t border-gray-200">
+                        <h4 className="text-sm font-medium text-gray-800 mb-3">Booking Summary</h4>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                          <div className="flex items-center justify-between sm:block">
+                            <span className="text-gray-600">Room:</span>
+                            <span className="font-medium text-gray-800">
+                              {rooms.find(r => r._id === formData.selectedRoomId)?.roomCategory || 'Standard Room'}
+                            </span>
                           </div>
                           {formData.checkInDate && formData.checkOutDate && (
                             <>
@@ -1372,20 +1633,20 @@ export default function GuestBookingPage() {
                           <>
                             <div className="flex items-center">
                               <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2h2" />
                               </svg>
                               <p className="text-sm">
                                 <span className="text-gray-500">Check-in:</span> 
-                                <span className="ml-1 text-gray-900">{formData.checkInDate.toLocaleDateString()}</span>
+                                <span className="ml-1">{formData.checkInDate.toLocaleDateString()}</span>
                               </p>
                             </div>
                             <div className="flex items-center">
                               <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 012-2h2" />
                               </svg>
                               <p className="text-sm">
                                 <span className="text-gray-500">Check-out:</span> 
-                                <span className="ml-1 text-gray-900">{formData.checkOutDate.toLocaleDateString()}</span>
+                                <span className="ml-1">{formData.checkOutDate.toLocaleDateString()}</span>
                               </p>
                             </div>
                             <div className="flex items-center">

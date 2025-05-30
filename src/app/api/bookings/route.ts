@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {  try {
     const roomId = url.searchParams.get('roomId');
     const status = url.searchParams.get('status');
     
-    let query: any = {};
+    const query: { propertyId?: mongoose.Types.ObjectId; roomId?: mongoose.Types.ObjectId; bookingStatus?: string } = {};
     
     if (propertyId) {
       query.propertyId = new mongoose.Types.ObjectId(propertyId);
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {  try {
     // Check if required fields are present
     const requiredFields = [
       'propertyId', 'roomId', 'guestName', 'guestEmail', 
-      'guestPhone', 'guestAddress', 'checkInDate', 'checkOutDate'
+      'guestPhone', 'guestAddress', 'checkInDate', 'checkOutDate', 'paymentScreenshotUrl'
     ];
     
     for (const field of requiredFields) {
