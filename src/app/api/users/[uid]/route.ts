@@ -5,11 +5,11 @@ import User from '@/models/User';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { uid: string } }
+  context: { params: { uid: string } }
 ) {
   try {
     await dbConnect();
-    const { uid } = params;
+    const { uid } = context.params;
     
     const user = await User.findOne({ firebaseUid: uid });
     
@@ -32,11 +32,11 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { uid: string } }
+  context: { params: { uid: string } }
 ) {
   try {
     await dbConnect();
-    const { uid } = params;
+    const { uid } = context.params;
     const data = await request.json();
     
     const user = await User.findOneAndUpdate(
