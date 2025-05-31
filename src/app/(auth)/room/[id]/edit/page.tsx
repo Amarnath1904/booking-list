@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect, ChangeEvent, FormEvent, use } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { PricingType, RoomCapacity, RoomData } from '@/types/room'; // Updated imports
-import { IProperty } from '@/models/Property'; // Corrected import
-import { IRoomCategory } from '@/models/RoomCategory'; // Import the interface instead
+import { PricingType, RoomCapacity } from '@/types/room'; // Removed unused RoomData import
+import { IProperty } from '@/models/Property';
+import { IRoomCategory } from '@/models/RoomCategory';
 
 // Define an interface for the component props if not already defined elsewhere
 interface EditRoomPageProps {
@@ -235,9 +235,16 @@ export default function EditRoomPage({ params: paramsPromise }: EditRoomPageProp
         setNewCategory('');
         setShowNewCategoryInput(false);
       } catch (err) {
-        console.error('Error creating category:', err);
-        // Still add it to the local state even if the API call fails
-        const tempCategory = { _id: newCategory, name: newCategory };
+        console.error('Error creating category:', err);        // Still add it to the local state even if the API call fails
+        // Create a temp category that matches the IRoomCategory interface
+        const tempCategory = {
+          _id: newCategory,
+          name: newCategory,
+          propertyId: property._id,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as unknown as IRoomCategory; // Use type assertion to make it compatible
+        
         setCategories([...categories, tempCategory]);
         setFormData({
           ...formData,
@@ -451,10 +458,9 @@ export default function EditRoomPage({ params: paramsPromise }: EditRoomPageProp
                             value={formData.roomCategory}
                             onChange={handleChange}
                             className="block w-full rounded-md border border-gray-300 bg-white text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-10 px-3"
-                          >
-                            <option value="">Select a category</option>
+                          >                            <option value="">Select a category</option>
                             {categories.map((category) => (
-                              <option key={category._id} value={category.name}>
+                              <option key={String(category._id)} value={category.name}>
                                 {category.name}
                               </option>
                             ))}
