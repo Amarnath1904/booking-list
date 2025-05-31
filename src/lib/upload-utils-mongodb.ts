@@ -8,7 +8,7 @@ interface MongoDBUploadResult {
   width: number;       // Default to 0 for base64
   height: number;      // Default to 0 for base64
   resource_type: string; // Always 'image'
-  [key: string]: any;  // For other properties
+  [key: string]: string | number | boolean | null; // More specific than 'any'
 }
 
 /**

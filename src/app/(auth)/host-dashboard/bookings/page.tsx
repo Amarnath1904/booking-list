@@ -35,7 +35,7 @@ interface Booking {
 }
 
 export default function BookingsPage() {
-  const { user, loading: authLoading, userRole } = useAuth();
+  const { user, loading: authLoading } = useAuth(); // Remove userRole since it's not used
   const router = useRouter();
   
   const [bookings, setBookings] = useState<Booking[]>([]);

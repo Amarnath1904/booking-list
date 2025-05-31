@@ -2,11 +2,12 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect, ChangeEvent, FormEvent, use } from 'react'; // Added 'use'
+import { useState, useEffect, ChangeEvent, FormEvent, use } from 'react';
 import Link from 'next/link';
-import { Room, PricingType, RoomCapacity } from '@/types/room';
-import { Property } from '@/models/Property'; // Ensure this type is correctly defined/imported
-import { Category } from '@/models/RoomCategory'; // Ensure this type is correctly defined/imported
+import Image from 'next/image';
+import { PricingType, RoomCapacity, RoomData } from '@/types/room'; // Updated imports
+import { IProperty } from '@/models/Property'; // Corrected import
+import { IRoomCategory } from '@/models/RoomCategory'; // Import the interface instead
 
 // Define an interface for the component props if not already defined elsewhere
 interface EditRoomPageProps {
@@ -14,17 +15,38 @@ interface EditRoomPageProps {
 
 }
 
+// Define a Room interface since it's not exported from types/room.ts
+interface Room {
+  _id: string;
+  propertyId: {
+    _id: string;
+    name: string;
+    location: string;
+  };
+  pricingType: PricingType;
+  roomCategory?: string;
+  ratePerRoom?: number;
+  capacity: RoomCapacity;
+  amenities: string[];
+  images: string[];
+  extraPersonCharge?: number;
+  agentCommission?: number;
+  advanceAmount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function EditRoomPage({ params: paramsPromise }: EditRoomPageProps) {
   const params = use(paramsPromise); // Resolve the params promise
   const { user } = useAuth();
   const router = useRouter();
   const [room, setRoom] = useState<Room | null>(null);
-  const [property, setProperty] = useState<Property | null>(null);
+  const [property, setProperty] = useState<IProperty | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<IRoomCategory[]>([]);
   const [newCategory, setNewCategory] = useState('');
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -700,13 +722,13 @@ export default function EditRoomPage({ params: paramsPromise }: EditRoomPageProp
                       <h3 className="text-sm font-medium text-gray-700 mb-3">Current Photos</h3>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {existingImages.map((url, index) => (
-                          <div key={index} className="group relative rounded-lg overflow-hidden bg-gray-100 border border-gray-200 shadow-sm">
-                            <div className="aspect-w-4 aspect-h-3 relative">
+                          <div key={index} className="group relative rounded-lg overflow-hidden bg-gray-100 border border-gray-200 shadow-sm">                            <div className="aspect-w-4 aspect-h-3 relative">
                               <Image 
                                 src={url} 
                                 alt={`Room photo ${index + 1}`} 
                                 className="object-cover"
-                                layout="fill"
+                                width={300}
+                                height={200}
                               />
                               <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity duration-200"></div>
                             </div>
@@ -759,13 +781,13 @@ export default function EditRoomPage({ params: paramsPromise }: EditRoomPageProp
                       <h3 className="text-sm font-medium text-gray-700 mb-3">New Photos Preview</h3>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {previewUrls.map((url, index) => (
-                          <div key={index} className="group relative rounded-lg overflow-hidden bg-gray-100 border border-gray-200 shadow-sm">
-                            <div className="aspect-w-4 aspect-h-3 relative">
+                          <div key={index} className="group relative rounded-lg overflow-hidden bg-gray-100 border border-gray-200 shadow-sm">                            <div className="aspect-w-4 aspect-h-3 relative">
                               <Image 
                                 src={url} 
                                 alt={`Preview ${index + 1}`}
                                 className="object-cover"
-                                layout="fill"
+                                width={300}
+                                height={200}
                               />
                               <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity duration-200"></div>
                             </div>

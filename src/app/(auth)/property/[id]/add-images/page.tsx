@@ -13,12 +13,13 @@ interface Property {
   images?: string[];
 }
 
-interface MyPageProps {
+// We need a more specific type for the page props in Next.js 15
+export default function AddPropertyImagesPage({ 
+  params,
+}: {
   params: { id: string };
-  searchParams?: { [key: string]: string | string[] | undefined };
-}
-
-export default function AddPropertyImagesPage({ params }: MyPageProps) {
+  // searchParams is included by default in Next.js page props but we don't use it here
+}) {
   const { user } = useAuth();
   const router = useRouter();
   const [property, setProperty] = useState<Property | null>(null);
