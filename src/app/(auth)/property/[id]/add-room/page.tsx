@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
+import { useState, useEffect, FormEvent, ChangeEvent, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
@@ -18,7 +18,12 @@ interface Category {
   name: string;
 }
 
-export default function AddRoomPage({ params }: { params: { id: string } }) {
+interface AddRoomPageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default function AddRoomPage({ params: paramsPromise }: AddRoomPageProps) {
+  const params = use(paramsPromise); // Resolve the params promise
   const { user } = useAuth();
   const router = useRouter();
   const [property, setProperty] = useState<Property | null>(null);

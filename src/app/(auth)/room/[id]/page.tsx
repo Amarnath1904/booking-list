@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
@@ -28,7 +28,12 @@ interface Property {
   location: string;
 }
 
-export default function RoomDetailsPage({ params }: { params: { id: string } }) {
+interface RoomDetailsPageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default function RoomDetailsPage({ params: paramsPromise }: RoomDetailsPageProps) {
+  const params = use(paramsPromise); // Resolve the params promise
   const { user } = useAuth();
   const router = useRouter();
   const [room, setRoom] = useState<Room | null>(null);

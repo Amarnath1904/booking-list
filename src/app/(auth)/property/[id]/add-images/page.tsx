@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
+import { useState, useEffect, FormEvent, ChangeEvent, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
@@ -13,13 +13,15 @@ interface Property {
   images?: string[];
 }
 
-// We need a more specific type for the page props in Next.js 15
+// Define interface for page props in Next.js 15
+interface AddPropertyImagesPageProps {
+  params: Promise<{ id: string }>;
+}
+
 export default function AddPropertyImagesPage({ 
-  params,
-}: {
-  params: { id: string };
-  // searchParams is included by default in Next.js page props but we don't use it here
-}) {
+  params: paramsPromise,
+}: AddPropertyImagesPageProps) {
+  const params = use(paramsPromise); // Resolve the params promise
   const { user } = useAuth();
   const router = useRouter();
   const [property, setProperty] = useState<Property | null>(null);
