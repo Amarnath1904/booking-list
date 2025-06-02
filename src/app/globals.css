@@ -19,6 +19,57 @@
   }
 }
 
+/* Custom calendar responsiveness styles */
+.calendar-container .rdrCalendarWrapper {
+  width: 100% !important;
+  max-width: 100% !important;
+  font-size: 14px;
+}
+
+.calendar-container .rdrMonth {
+  width: 100% !important;
+}
+
+.calendar-container .rdrDateDisplayWrapper {
+  width: 100% !important;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .calendar-container .rdrMonth {
+    width: 100% !important;
+    padding: 0 !important;
+  }
+  
+  .calendar-container .rdrCalendarWrapper {
+    font-size: 12px;
+  }
+  
+  .calendar-container .rdrMonthAndYearPickers {
+    font-size: 14px;
+  }
+  
+  .calendar-container .rdrNextPrevButton {
+    margin: 0 5px;
+  }
+}
+
+/* Small screen adjustments */
+@media (max-width: 480px) {
+  .calendar-container .rdrDay {
+    height: 36px;
+  }
+  
+  .calendar-container .rdrDayNumber {
+    font-size: 12px;
+  }
+  
+  .calendar-container .rdrMonthAndYearWrapper {
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

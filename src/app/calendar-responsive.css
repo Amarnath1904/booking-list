@@ -1,0 +1,196 @@
+/* Custom calendar styles for responsiveness */
+.rdrCalendarWrapper {
+  font-size: 16px;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden; /* Prevent horizontal scrolling */
+}
+
+.rdrMonth {
+  width: 100% !important;
+}
+
+.rdrMonths.rdrMonthsVertical .rdrMonth {
+  padding: 0 0.5rem; /* Less padding on vertical layout */
+}
+
+.rdrDateDisplayWrapper {
+  width: 100% !important;
+}
+
+.rdrMonthAndYearWrapper {
+  align-items: center;
+  height: auto;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.rdrMonthAndYearPickers select {
+  padding: 6px 30px 6px 10px;
+}
+
+.rdrDateDisplayItem {
+  margin: 0 5px;
+  width: calc(50% - 10px);
+}
+
+/* Custom navigation buttons for better touch */
+button[aria-label="Previous month"],
+button[aria-label="Next month"] {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+button[aria-label="Previous month"]:hover:not(:disabled),
+button[aria-label="Next month"]:hover:not(:disabled) {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+button[aria-label="Previous month"]:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .rdrMonth {
+    width: 100% !important;
+    padding: 0 !important;
+  }
+  
+  .rdrCalendarWrapper {
+    font-size: 14px;
+  }
+  
+  .rdrMonthAndYearPickers {
+    font-size: 14px;
+  }
+  
+  .rdrDay {
+    height: 40px;
+  }
+  
+  .rdrDateDisplayItem {
+    width: 100%;
+    margin: 2px 0;
+  }
+  
+  /* Make the calendar buttons more touch-friendly */
+  .rdrNextPrevButton {
+    min-width: 38px;
+    min-height: 38px;
+  }
+  
+  /* Improve spacing in the month navigation */
+  .rdrMonthAndYearWrapper {
+    padding: 8px 5px;
+    justify-content: space-between;
+  }
+  
+  /* Ensure better tappable area for days */
+  .rdrDayNumber span {
+    padding: 6px;
+  }
+}
+
+/* Small screen adjustments */
+@media (max-width: 480px) {
+  .rdrDay {
+    height: 36px;
+  }
+  
+  .rdrDayNumber {
+    font-size: 12px;
+  }
+  
+  .rdrMonthAndYearWrapper {
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+  
+  /* Better touch targets on very small screens */
+  .rdrNextPrevButton {
+    padding: 6px;
+    margin: 0 3px;
+    min-width: 32px;
+    min-height: 32px;
+  }
+  
+  /* Ensure the date selection is fully visible */
+  .rdrDateDisplay {
+    flex-direction: column;
+    margin-bottom: 15px;
+  }
+  
+  .rdrDateDisplayItem {
+    width: 100%;
+    margin: 2px 0;
+  }
+  
+  /* Better month navigation on mobile */
+  .rdrMonthAndYearPickers select {
+    padding: 5px 25px 5px 8px;
+    font-size: 13px;
+  }
+  
+  /* Make days more compact on very small screens */
+  .rdrWeekDay {
+    font-size: 11px;
+    padding-bottom: 0;
+  }
+  
+  /* Selected dates highlight */
+  .rdrDayStartPreview, 
+  .rdrDayEndPreview, 
+  .rdrDayInPreview {
+    border-width: 1px;
+  }
+  
+  /* Improved tap targets for selection */
+  .rdrDayNumber span {
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+  
+  /* Fix for small screen scrolling */
+  .rdrMonths {
+    width: 100% !important;
+  }
+}
+
+/* Extra small screen adjustments */
+@media (max-width: 360px) {
+  .rdrDay {
+    height: 32px;
+  }
+  
+  .rdrDayNumber {
+    font-size: 11px;
+  }
+  
+  .rdrMonthName {
+    font-size: 12px;
+    padding: 5px 0;
+  }
+  
+  /* Extremely compact layout for tiny screens */
+  .rdrMonthAndYearWrapper {
+    height: auto;
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+  
+  .rdrNextPrevButton {
+    min-width: 28px;
+    min-height: 28px;
+  }
+}
